@@ -7,10 +7,11 @@ Created on Nov 28, 2019
 try:
     import UsrIntel.R1
 except:
-    print("Could not find UserIntel.R1 package. Ignoring...")
+    pass
+    #Warn("Could not find UserIntel.R1 package. Ignoring...")
 import sys
 import os
-import tkinter
+#import tkinter
 import argparse
 toolPath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(toolPath + '/../lib')
@@ -18,8 +19,8 @@ from Logger import *
 from LogParser import *
 from FileSelecter import *
 from ErrorWarningManager import *
-from file_patterns import *
-from buckets import *
+# from file_patterns import *
+# from buckets import *
 
 
 def WelcomeBanner():
@@ -150,10 +151,10 @@ def Run():
     # Instantiate ErrorWarningManager
     instEWManager = ErrorWarningManager(
         filesPatternsToParseDict,
-        ErrorWarningBuckets)
+        errorWarningBuckets)
     Info("Total number of uncategorized errors = " +
         str(instEWManager.GetErrorsCountForBucket('uncategorized')))
-    for bucket in ErrorWarningBuckets['errors']:
+    for bucket in errorWarningBuckets['errors']:
         Info("Total number of " + bucket + " errors = " +
              str(instEWManager.GetErrorsCountForBucket(bucket)))
     for file in instEWManager.GetErrorsFileListForBucket('uncategorized'):
@@ -312,7 +313,7 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
 
 def Report(args):
     # Instantiate ErrorWarningManager
-    instEWManager = ErrorWarningManager(filesPatternsToParseDict, ErrorWarningBuckets)
+    instEWManager = ErrorWarningManager(filesPatternsToParseDict, errorWarningBuckets)
     GenStdoutReport(instEWManager, args)
 
 def List_Buckets(args):
@@ -335,13 +336,13 @@ def Parse_Config_Files(args):
                 continue
             if section.lower() == "globalignore":
                 #print(config[section]['pattern'])
-                for pattern in config[section]['pattern'].split(','):
+                for pattern in config[section]['pattern'].split('```'):
                     filesPatternsToParseDict['global_exclude_patterns'].append(pattern)
             else:
                 dirHash['step'] = section.lower()
                 for val in config[section]:
                     if(val.lower() == 'include' or val.lower() == 'exclude' or val.lower() == 'exclude_dirs'):
-                        dirHash[val] = config[section][val].split(',')
+                        dirHash[val] = config[section][val].split('```')
                     else:
                         if(config[section][val] == '1'):
                             dirHash[val] = True
@@ -357,12 +358,38 @@ def Parse_Config_Files(args):
 
 def List_Files(args):
     fileList = GetFileList(filesPatternsToParseDict)
-    Print("The following files will be parsed...")
+    Info("The following files will be parsed...")
     if(not fileList):
-        Print("Oops. No files to be parsed here. Please specify correct configuration file using -cf argument...")
+        Info("Oops. No files to be parsed here. Please specify correct configuration file using -cf argument...")
     else:
         for logFile in fileList:
-            Print(logFile)
+            Info(logFile)
+
+def Parse_Bucket_Config_Files(args):
+    Info("The bucket configuration file(s) are " + ' '.join(args.bucket_files))
+    import configparser
+    # filesPatternsToParseDict = {'directories':[], 'global_exclude_patterns':[]}
+    for bucketFile in args.bucket_files:
+        bucket = configparser.ConfigParser()
+        Debug("Parsing bucket config file = " + bucketFile)
+        if(not os.path.isfile(bucketFile)):
+            Critical("Config file = " + bucketFile + " does not exist.  Exiting...")
+            continue
+        bucket.read(bucketFile)
+        for section in bucket.sections():
+            if section.lower() == "demo" or (section.lower() != "warnings" and section.lower() != "errors"):
+                Debug("Ignoring section " + section)
+                continue
+
+            for val in bucket[section]:
+                # We are processing the warnings section
+                if section.lower() == "warnings":
+                    errorWarningBuckets['warnings'][val.upper()] = bucket[section][val].split('```')
+                # We are processing the errors section
+                else:
+                    errorWarningBuckets['errors'][val.upper()] = bucket[section][val].split('```')
+
+        Debug(pprint.pformat(errorWarningBuckets, indent=4))
 
 if __name__ == '__main__':
     WelcomeBanner()
@@ -380,8 +407,12 @@ if __name__ == '__main__':
     SetupLogger(fileName="Approval.log", loggingLevel=logging.INFO)
 
     if(args.config_files):
-        Info("Parsing configuration files...")
+        Info("Parsing directory configuration files...")
         Parse_Config_Files(args)
+
+    if(args.bucket_files):
+        Info("Parsing bucket configuration files...")
+        Parse_Bucket_Config_Files(args)
 
     if(args.cmd == 'report'):
         Info("Executing report command...")
@@ -394,7 +425,7 @@ if __name__ == '__main__':
         List_Files(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
-        Print(pprint.pformat(args))
+        Info(pprint.pformat(args))
 
     exit(0)
 

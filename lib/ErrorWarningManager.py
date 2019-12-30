@@ -13,6 +13,82 @@ from LogParser import *
 from FileSelecter import *
 from SynopsysErrorsWarnings import *
 
+# Specify various directories and file patterns to be used for parsing
+filesPatternsToParseDict = {
+    # List of directories and the file patterns
+    'directories': [
+        # You can specify multiple such blocks
+        # {
+        #     'path': '/nfs/site/home/amitvinx',
+        #     'exclude_dirs' : [
+        #         '.vnc',
+        #     ],
+        #     'include' : [
+        #         '.*\.log',
+        #     ],
+        #     'exclude' : [
+        #         '^\.',
+        #     ],
+        #     'recursive' : True,
+        #     'exclude_hidden' : True,
+        #     'ignore' : False,
+        # },
+        # {
+        #     'path': '../sample_logs',
+        #     # Exclude file if directory/sub-directory matches following patterns
+        #     'exclude_dirs' : [
+        #         'scripts_flow',
+        #     ],
+        #     # Include files that match following regular expressions
+        #     'include' : [
+        #         r'.*\.log$',
+        #         # r'\.rpt$',
+        #     ],
+        #     # Exclude files that match following regular expressions
+        #     'exclude' : [
+        #         '^\.',
+        #         'scripts_flow',
+        #     ],
+        #     # Control recursive search
+        #     'recursive' : True,
+        #     # Exclude hidden_directories
+        #     'exclude_hidden' : True,
+        #     'ignore' : False,
+        # },
+    ],
+    # Global patterns to exclude
+    'global_exclude_patterns' : [
+        # 'abc',
+        # 'def',
+        # 'jkl',
+        # 'Xion',
+    ],
+}
+
+errorWarningBuckets = {
+    'warnings': {
+        # 'WARNING_CHANGED_INSTANCE_NAME'  : [
+        #     'Warning: Changed instance name tdl_eu_gpgpu_ctxstart_reg to tdl_eu_gpgpu_ctxstart_reg_inst .*',
+        # ],
+        # 'WARNING_INCONSISTENT_PIN_DIR'  : [
+        #  'Warning: The pin direction of .* pin on .* cell in the .* technology library is inconsistent with the same-name pin in the .* physical library. No physical link for the logical lib cell. .*'
+        # ],
+        # 'WARNING_NON_DEFAULT_CONTACT_CODE'  : [
+        #     'Warning: Non-default ContactCode .* on layer .* has cut size with no matching cut name found.'
+        # ],
+
+
+
+    },
+    'errors': {
+        # 'ERROR_NO_ATTRIBUTES'    : [
+        #     'ERROR==> No attributes matching pattern.*',
+        # ],
+        # 'ERROR_UNABLE_EXPAND'    : [
+        #     'ERROR==> Unable to expand clocks for base clock.*',
+        # ],
+    },
+}
 
 class ErrorWarningManager(object):
     '''
