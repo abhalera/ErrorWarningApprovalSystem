@@ -19,6 +19,7 @@ from Logger import *
 from LogParser import *
 from FileSelecter import *
 from ErrorWarningManager import *
+from BucketsDatabaseManager import *
 # from file_patterns import *
 # from buckets import *
 
@@ -58,6 +59,12 @@ def ParseCommandline():
             'list_files',
             'report',
             'clean',
+            'create_database',
+            'list_database',
+            'report_bucket',
+            'add_bucket',
+            'remove_bucket',
+            'update_bucket',
         ],
         default = 'nop'
     )
@@ -66,6 +73,13 @@ def ParseCommandline():
         help  = "Generate Excel report",
         nargs = '?',
         const = 'ewadmin.xlsx',
+    )
+    parser.add_argument(
+        '-db',
+        '--database',
+        help  = "name of the database",
+        nargs = '?',
+        const = 'default.db',
     )
     # parser.add_argument(
     #     '-csv',
@@ -391,8 +405,28 @@ def Parse_Bucket_Config_Files(args):
 
         Debug(pprint.pformat(errorWarningBuckets, indent=4))
 
+def Create_Database(args, dbManager=None):
+    Info("TODO: Input = Database Name or None, Output = Should create a new sqlite database and add required tables...")
+    dbManager.Create_Database(args.database)
+
+def List_Database(args):
+    Info("TODO: Input = None, Output = Should list all the databases existing in the db sub-directory...")
+
+def Report_Bucket(args, bucketNamesList=None):
+    Info("TODO: Input = List of bucket names or None, Output = Should return details of bucket information...")
+
+def Add_Bucket(args, bucketsInfoDict=None):
+    Info("TODO: Input = Dictionary of bucket information or None, Output = Success->True, Failure->False...")
+
+def Remove_Bucket(args, bucketNamesList=None):
+    Info("TODO: Input = List of bucket names or None, Output = Should remove buckets information of the input buckets from the database...")
+
+def Update_Bucket(args, bucketsInfoDict=None):
+    Info("TODO: Input = Dictionary of bucket information or None, Update the buckets information... Output = Success->True, Failure->False...")
+
 if __name__ == '__main__':
     WelcomeBanner()
+    bucketsDbManager = BucketsDatabaseManager()
     # Parse Command-line Arguments
     Info("Parsing command-line arguments...")
     args = ParseCommandline()
@@ -423,9 +457,27 @@ if __name__ == '__main__':
     if(args.cmd == 'list_files'):
         Info("Executing list_files command...")
         List_Files(args)
+    if(args.cmd == 'create_database'):
+        Info("Executing create_database command...")
+        Create_Database(args, bucketsDbManager)
+    if(args.cmd == 'list_database'):
+        Info("Executing list_database command...")
+        List_Database(args)
+    if(args.cmd == 'report_bucket'):
+        Info("Executing report_bucket command...")
+        Report_Bucket(args)
+    if(args.cmd == 'add_bucket'):
+        Info("Executing add_bucket command...")
+        Add_Bucket(args)
+    if(args.cmd == 'remove_bucket'):
+        Info("Executing remove_bucket command...")
+        Remove_Bucket(args)
+    if(args.cmd == 'update_bucket'):
+        Info("Executing update_bucket command...")
+        Update_Bucket(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
-        Info(pprint.pformat(args))
+        Print(pprint.pformat(args))
 
     exit(0)
 
