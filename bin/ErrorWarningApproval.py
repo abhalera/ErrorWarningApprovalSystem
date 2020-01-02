@@ -20,13 +20,9 @@ from LogParser import *
 from FileSelecter import *
 from ErrorWarningManager import *
 from BucketsDatabaseManager import *
-# from file_patterns import *
-# from buckets import *
 
 
 def WelcomeBanner():
-    Info("Welcome to Error/Warning Aproval System...")
-    #TODO Add a proper Banner
     print('''
         _____                   __        __               _                _                                    _ ____            _                 
        | ____|_ __ _ __ ___  _ _\ \      / /_ _ _ __ _ __ (_)_ __   __ _   / \   _ __  _ __  _ __ _____   ____ _| / ___| _   _ ___| |_ ___ _ __ ___  
@@ -35,8 +31,6 @@ def WelcomeBanner():
        |_____|_|  |_|  \___/|_|    \_/\_/ \__,_|_|  |_| |_|_|_| |_|\__, /_/   \_\ .__/| .__/|_|  \___/ \_/ \__,_|_|____/ \__, |___/\__\___|_| |_| |_|
                                                                    |___/        |_|   |_|                                |___/                       
                                                                        ''')
-
-
 
 def ParseCommandline():
     parser = argparse.ArgumentParser(
@@ -81,12 +75,12 @@ def ParseCommandline():
         nargs = '?',
         const = 'default.db',
     )
-    # parser.add_argument(
-    #     '-csv',
-    #     help  = "Generate CSV report",
-    #     nargs = '?',
-    #     const = 'ewadmin.csv',
-    # )
+    parser.add_argument(
+        '-csv',
+        help  = "Generate CSV report",
+        nargs = '?',
+        const = 'ewadmin.csv',
+    )
     parser.add_argument(
         '-b',
         '--bucket',
@@ -159,21 +153,6 @@ def ParseCommandline():
     args = parser.parse_args()
     return args
 
-
-
-def Run():
-    # Instantiate ErrorWarningManager
-    instEWManager = ErrorWarningManager(
-        filesPatternsToParseDict,
-        errorWarningBuckets)
-    Info("Total number of uncategorized errors = " +
-        str(instEWManager.GetErrorsCountForBucket('uncategorized')))
-    for bucket in errorWarningBuckets['errors']:
-        Info("Total number of " + bucket + " errors = " +
-             str(instEWManager.GetErrorsCountForBucket(bucket)))
-    for file in instEWManager.GetErrorsFileListForBucket('uncategorized'):
-        Info(file)
-
 # Dump CSV Report
 def GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
     pass
@@ -222,8 +201,9 @@ def GenStdoutReport(instEWManager, args):
                     eData.append([bucket, iCount])
 
         if not args.xls:
-            Print(tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
-        # Print(pprint.pformat(eData, indent=4))
+            Info('\n' + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
+        Debug("Printing eData...")
+        Debug(pprint.pformat(eData, indent=4))
 
     if(not args.errors_only):
         if(int(args.report_level) > 2):
@@ -257,7 +237,9 @@ def GenStdoutReport(instEWManager, args):
                 else:
                     wData.append([bucket, instEWManager.GetWarningsCountForBucket(bucket)])
         if not args.xls:
-            Print(tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
+            Info('\n' + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
+        Debug("Printing wData...")
+        Debug(pprint.pformat(wData, indent=4))
 
     GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders)
     GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders)
@@ -339,7 +321,7 @@ def Parse_Config_Files(args):
     # filesPatternsToParseDict = {'directories':[], 'global_exclude_patterns':[]}
     for configFile in args.config_files:
         config = configparser.ConfigParser()
-        #Print("Parsing config file = " + configFile)
+        Debug("Parsing config file = " + configFile)
         if(not os.path.isfile(configFile)):
             Critical("Config file = " + configFile + " does not exist.  Exiting...")
             continue
@@ -349,7 +331,6 @@ def Parse_Config_Files(args):
             if section.lower() == "demo":
                 continue
             if section.lower() == "globalignore":
-                #print(config[section]['pattern'])
                 for pattern in config[section]['pattern'].split('```'):
                     filesPatternsToParseDict['global_exclude_patterns'].append(pattern)
             else:
@@ -368,21 +349,21 @@ def Parse_Config_Files(args):
 
                 filesPatternsToParseDict['directories'].append(dirHash)
 
-    #print(pprint.pformat(filesPatternsToParseDict, indent=4))
+    Debug("Printing filesPatternsToParseDict")
+    Debug(pprint.pformat(filesPatternsToParseDict, indent=4))
 
 def List_Files(args):
     fileList = GetFileList(filesPatternsToParseDict)
     Info("The following files will be parsed...")
     if(not fileList):
-        Info("Oops. No files to be parsed here. Please specify correct configuration file using -cf argument...")
+        Critical("Oops. No files to be parsed here. Please specify correct configuration file using -cf argument...")
     else:
         for logFile in fileList:
             Info(logFile)
 
 def Parse_Bucket_Config_Files(args):
-    Info("The bucket configuration file(s) are " + ' '.join(args.bucket_files))
+    Debug("The bucket configuration file(s) are " + ' '.join(args.bucket_files))
     import configparser
-    # filesPatternsToParseDict = {'directories':[], 'global_exclude_patterns':[]}
     for bucketFile in args.bucket_files:
         bucket = configparser.ConfigParser()
         Debug("Parsing bucket config file = " + bucketFile)
@@ -402,7 +383,7 @@ def Parse_Bucket_Config_Files(args):
                 # We are processing the errors section
                 else:
                     errorWarningBuckets['errors'][val.upper()] = bucket[section][val].split('```')
-
+        Debug("Printing errorWarningBuckets")
         Debug(pprint.pformat(errorWarningBuckets, indent=4))
 
 def Create_Database(args, dbManager=None):
@@ -426,166 +407,54 @@ def Update_Bucket(args, bucketsInfoDict=None):
 
 if __name__ == '__main__':
     WelcomeBanner()
-    bucketsDbManager = BucketsDatabaseManager()
-    # Parse Command-line Arguments
-    Info("Parsing command-line arguments...")
     args = ParseCommandline()
 
-
     # Setup the Logger
+    loggingLevel = logging.INFO
     if(args.verbosity == 'debug'):
-        SetupLogger(fileName="Approval.log", loggingLevel=logging.DEBUG)
-    else:
-        SetupLogger(fileName="Approval.log", loggingLevel=logging.INFO)
+        loggingLevel=logging.DEBUG
 
-    SetupLogger(fileName="Approval.log", loggingLevel=logging.INFO)
+    SetupLogger(fileName="Approval.log", loggingLevel=loggingLevel)
+    loggingLevel = None
+    # Parse Command-line Arguments
+    bucketsDbManager = BucketsDatabaseManager()
 
     if(args.config_files):
-        Info("Parsing directory configuration files...")
+        Debug("Parsing directory configuration files...")
         Parse_Config_Files(args)
 
     if(args.bucket_files):
-        Info("Parsing bucket configuration files...")
+        Debug("Parsing bucket configuration files...")
         Parse_Bucket_Config_Files(args)
 
     if(args.cmd == 'report'):
-        Info("Executing report command...")
+        Debug("Executing report command...")
         Report(args)
     if(args.cmd == 'list_buckets'):
-        Info("Executing list_buckets command...")
+        Debug("Executing list_buckets command...")
         List_Buckets(args)
     if(args.cmd == 'list_files'):
-        Info("Executing list_files command...")
+        Debug("Executing list_files command...")
         List_Files(args)
     if(args.cmd == 'create_database'):
-        Info("Executing create_database command...")
+        Debug("Executing create_database command...")
         Create_Database(args, bucketsDbManager)
     if(args.cmd == 'list_database'):
-        Info("Executing list_database command...")
+        Debug("Executing list_database command...")
         List_Database(args)
     if(args.cmd == 'report_bucket'):
-        Info("Executing report_bucket command...")
+        Debug("Executing report_bucket command...")
         Report_Bucket(args)
     if(args.cmd == 'add_bucket'):
-        Info("Executing add_bucket command...")
+        Debug("Executing add_bucket command...")
         Add_Bucket(args)
     if(args.cmd == 'remove_bucket'):
-        Info("Executing remove_bucket command...")
+        Debug("Executing remove_bucket command...")
         Remove_Bucket(args)
     if(args.cmd == 'update_bucket'):
-        Info("Executing update_bucket command...")
+        Debug("Executing update_bucket command...")
         Update_Bucket(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
-        Print(pprint.pformat(args))
+        Info(pprint.pformat(args))
 
-    exit(0)
-
-
-# TODO: Implement the GUI
-
-    # Debug("Printing list of files")
-    # for myFile in filesToParseList:
-    #     Info(myFile)
-    # # Initialize Logger
-    # WelcomeBanner()
-    # l = LogParser(
-    #     fileName =
-    #     "/nfs/sc/disks/adl_media_par_02/amitvinx/sample_logs/gtlpdssmpar1.16_oct_dupf/10_syn/logs/010_elaborate/elaborate.log",
-    #     signature =
-    #     {
-    #         'exists':
-    #         [
-    #             "Initializing",
-    #             "Initializing\.\.\.",
-    #             "Initializing.*",
-    #         ],
-    #         'EXISTS':
-    #         [
-    #             'Initializing',
-    #             'Initializing...',
-    #             'Initializing.*',
-    #         ],
-    #         'namevalue':
-    #         [
-    #             {
-    #                 'name' : 'totalTime',
-    #                 'value': 'SNPS_INFO : METRIC \| STRING INFO.TOTAL_TIME \| (.*)',
-    #             },
-    #             {
-    #                 'name' : 'reportTime',
-    #                 'value': 'SNPS_INFO   : METRIC \| STRING INFO.REPORT_TIME \| (.*)',
-    #             },
-    #             {
-    #                 'name' : 'toolName',
-    #                 'value': 'SNPS_INFO   : (METRIC) \| STRING    SYS.TOOL_NAME \| (.*)',
-    #             },
-    #             {
-    #                 'name' : 'sevStep',
-    #                 'value': 'SNPS_INFO   : SEV variable defined: SEV\(step\) : (.*)',
-    #             },
-    #             {
-    #                 'name' : 'experiment',
-    #                 'value': ' SEV variable defined: SEV\(log_file\) : \/nfs\/sc\/disks\/adl_dssm_par_01\/nayakotx\/(.*)',
-    #             },
-    #             {
-    #                 'name' : 'multiple',
-    #                 'value': 'Lynx-INFO==> Elapsed wall time of subtask \'(.*)\'      : (.*)',
-    #             },
-    #         ]
-    #     }
-    # )
-    # l.Parse()
-    # Info(l.DidExistsMatch('Initializing'))
-    # Info(l.GetExistsMatchCount('Initialiing'))
-    # for m in l.GetEXISTSMatchList('Initializing.*'):
-        #     print(m)
-        # Info("Tool name = " + l.GetValueForName('toolName'))
-        # Info("Full match = " + l.GetReMatchForName('toolName').group())
-        # Info("Group 1 match = " + l.GetGroupMatchForName('toolName', 1))
-        # Info("Group 2 match = " + l.GetGroupMatchForName('toolName', 2))
-        # Info("SEV Step = " + l.GetValueForName('sevStep'))
-        # Info("Experiment = " + l.GetValueForName('experiment'))
-        # Info("Group 1 = " + l.GetGroupMatchForName('experiment', 1))
-        # Info("Group 2 = " + l.GetGroupMatchForName('experiment', 2))
-        # Info("Full Match = " + l.GetFullMatchForName('experiment'))
-        #
-        # Info("Multiple Group 1 = " + l.GetGroupMatchForName('multiple', 1))
-        # Info("Multiple Group 2 = " + l.GetGroupMatchForName('multiple', 2))
-# def donothing():
-#     filewin = tkinter.Toplevel(root)
-#     button = tkinter.Button(filewin, text="Do nothing button")
-#     button.pack()
-# root = tkinter.Tk()
-# # Code to add widgets will go here...
-# menubar = tkinter.Menu(root)
-# filemenu = tkinter.Menu(menubar, tearoff=0)
-# filemenu.add_command(label="New", command=donothing)
-# filemenu.add_command(label="Open", command=donothing)
-# filemenu.add_command(label="Save", command=donothing)
-# filemenu.add_command(label="Save as...", command=donothing)
-# filemenu.add_command(label="Close", command=donothing)
-#
-# filemenu.add_separator()
-#
-# filemenu.add_command(label="Exit", command=root.quit)
-# menubar.add_cascade(label="File", menu=filemenu)
-# editmenu = tkinter.Menu(menubar, tearoff=0)
-# editmenu.add_command(label="Undo", command=donothing)
-#
-# editmenu.add_separator()
-#
-# editmenu.add_command(label="Cut", command=donothing)
-# editmenu.add_command(label="Copy", command=donothing)
-# editmenu.add_command(label="Paste", command=donothing)
-# editmenu.add_command(label="Delete", command=donothing)
-# editmenu.add_command(label="Select All", command=donothing)
-#
-# menubar.add_cascade(label="Edit", menu=editmenu)
-# helpmenu = tkinter.Menu(menubar, tearoff=0)
-# helpmenu.add_command(label="Help Index", command=donothing)
-# helpmenu.add_command(label="About...", command=donothing)
-# menubar.add_cascade(label="Help", menu=helpmenu)
-#
-# root.config(menu=menubar)
-# root .mainloop()

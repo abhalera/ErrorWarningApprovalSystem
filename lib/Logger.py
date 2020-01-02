@@ -38,6 +38,7 @@ def Error(message=None):
 def Critical(message=None):
     if(message != None):
         logging.critical(message)
+        exit(1)
 
 def Debug(message=None):
     if(message != None):

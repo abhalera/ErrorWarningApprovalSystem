@@ -51,7 +51,7 @@ class LogParser(object):
         '''
         Parse the file
         '''
-        Info("Parsing file " + self.fileName)
+        Debug("Parsing file " + self.fileName)
         Debug(self.signature)
 
         # exists Case insensitive

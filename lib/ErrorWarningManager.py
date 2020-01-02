@@ -166,7 +166,7 @@ class ErrorWarningManager(object):
             l.Parse()
 
             # Bucketize the errors
-            Info("Total number of errors found in file " + logFile + " = "
+            Debug("Total number of errors found in file " + logFile + " = "
                  + str(len(l.GetEXISTSMatchList('ERROR.*') +
                            l.GetEXISTSMatchList('Error.*'))))
             for item in l.GetEXISTSMatchList('ERROR.*') + l.GetEXISTSMatchList('Error.*'):
@@ -226,7 +226,7 @@ class ErrorWarningManager(object):
                         self._bucketsInfo['errors']['uncategorized']['text'][item] = {logFile : 1}
 
             # Bucketize the warnings
-            Info("Total number of warnings found in file " + logFile + " = "
+            Debug("Total number of warnings found in file " + logFile + " = "
                  + str(len(l.GetEXISTSMatchList('WARNING.*') +
                           l.GetEXISTSMatchList('Warning.*'))))
             for item in l.GetEXISTSMatchList('WARNING.*') + l.GetEXISTSMatchList('Warning.*'):
@@ -285,7 +285,7 @@ class ErrorWarningManager(object):
                     else:
                         self._bucketsInfo['warnings']['uncategorized']['text'][item] = {logFile : 1}
 
-            Info("Data after parsing all the logs")
+            Debug("Data after parsing all the logs")
             Debug(pprint.pformat(self._bucketsInfo, indent=2))
 
     # Returns dictionary of all warnings belonging to a bucket
