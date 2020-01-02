@@ -276,9 +276,20 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
                 eWorksheet.set_column(i, i, width)
             eWorksheet.write_row(0, 0, eHeaders, bold)
             row = 1
+            prevData = 'StartingRow' 
             for rowData in eData:
                 eWorksheet.write_row(row, 0, rowData, wrap)
+                if(int(args.report_level) >= 2):
+                    eWorksheet.set_row(row,None,None,{'level' : 1})
+                    if(rowData[0] != prevData):
+                        if(prevData != 'StartingRow'):
+                            Debug("Setting row = " + str(row-1) + " as collapsed")
+                            eWorksheet.set_row(row-1,None,None,{'collapsed' : True})
+                    prevData = rowData[0]
                 row = row + 1
+            if(int(args.report_level) >= 2):
+                eWorksheet.set_row(row-1,None,None,{'collapsed' : True})
+
             eWorksheet.autofilter(0,0,eRowMax, eColMax-1)
 
         # Populate Warnings sheet
@@ -288,24 +299,35 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
                 wWorksheet.set_column(i, i, width)
             wWorksheet.write_row(0, 0, wHeaders, bold)
             row = 1
+            prevData = 'StartingRow' 
             for rowData in wData:
                 wWorksheet.write_row(row, 0, rowData, wrap)
+                if(int(args.report_level) >= 2):
+                    wWorksheet.set_row(row,None,None,{'level' : 1})
+                    if(rowData[0] != prevData):
+                        if(prevData != 'StartingRow'):
+                            Debug("Setting row = " + str(row-1) + " as collapsed")
+                            wWorksheet.set_row(row-1,None,None,{'collapsed' : True})
+                    prevData = rowData[0]
                 row = row + 1
+            if(int(args.report_level) >= 2):
+                wWorksheet.set_row(row-1,None,None,{'collapsed' : True})
+
             wWorksheet.autofilter(0,0,wRowMax, wColMax-1)
 
         workbook.close()
-        Print("Dumping report to " + args.xls)
+        Info("Dumping report to " + args.xls)
         if(args.mail):
             if(os.name == 'posix'):
-                Print("Emailing report file " + args.xls +" to " + ' '.join(args.mail))
+                Info("Emailing report file " + args.xls +" to " + ' '.join(args.mail))
                 cmd = 'echo \"Error Warnings Approval System Report\" | mutt -s \"EWAS Report\" -a \"./' + args.xls + '\" -- ' + ''.join(args.mail)
                 # print(cmd)
                 os.system(cmd)
             else:
                 if(os.name == 'nt'):
-                    Print("OS not supported for e-mailing information...")
+                    Warn("OS not supported for e-mailing information...")
                 else:
-                    Print("OS not supported for e-mailing information...")
+                    Warn("OS not supported for e-mailing information...")
 
 def Report(args):
     # Instantiate ErrorWarningManager
