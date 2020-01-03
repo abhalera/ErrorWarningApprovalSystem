@@ -20,7 +20,7 @@ from LogParser import *
 from FileSelecter import *
 from ErrorWarningManager import *
 from BucketsDatabaseManager import *
-
+from SynopsysErrorsWarnings import *
 
 def WelcomeBanner():
     print('''
@@ -164,18 +164,23 @@ def GenStdoutReport(instEWManager, args):
     wrapper120 = textwrap.TextWrapper(width=120)
     wrapper80  = textwrap.TextWrapper(width=80)
     wrapper50  = textwrap.TextWrapper(width=50)
-    eHeaders = ["Error Bucket", "Bucket Count"]
-    wHeaders = ["Warning Bucket", "Bucket Count"]
+    wrapper40  = textwrap.TextWrapper(width=40)
+    wrapper30  = textwrap.TextWrapper(width=30)
+    eHeaders = ["Error Bucket", "Num"]
+    wHeaders = ["Warning Bucket", "Num"]
     eData    = []
     wData    = []
     if(not args.warnings_only):
-        if(int(args.report_level) > 2):
+        if(int(args.report_level) > 1):
             eHeaders.append("Error Messages")
+        if(int(args.report_level) > 2):
             eHeaders.append("Log File")
-            eHeaders.append("Log Occurences")
-        else:
-            if(int(args.report_level) > 1):
-                eHeaders.append("Error Messages")
+            eHeaders.append("FC")
+        if(int(args.report_level) > 3):
+            eHeaders.append("Short Description")
+        if(int(args.report_level) > 4):
+            eHeaders.append("Full Description")
+
         for bucket in instEWManager.GetErrorsBucketsList():
             iCount = instEWManager.GetErrorsCountForBucket(bucket)
             if(args.bucket and bucket not in args.bucket):
@@ -187,9 +192,33 @@ def GenStdoutReport(instEWManager, args):
                     errorLogCount = instEWManager.GetErrorsFileCountDictForBucketText(bucket, error)
                     for key in errorLogCount.keys():
                         if(args.xls):
-                            eData.append([bucket, iCount, error,  key, errorLogCount[key]])
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    eData.append([bucket, iCount, error,  key, errorLogCount[key], SynopsysErrorsWarningsDict[bucket]['short'], SynopsysErrorsWarningsDict[bucket]['full']])
+                                else:
+                                    eData.append([bucket, iCount, error,  key, errorLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        eData.append([bucket, iCount, error,  key, errorLogCount[key], SynopsysErrorsWarningsDict[bucket]['short']])
+                                    else:
+                                        eData.append([bucket, iCount, error,  key, errorLogCount[key], "NA"])
+                                else:
+                                    eData.append([bucket, iCount, error,  key, errorLogCount[key]])
                         else:
-                            eData.append([bucket, iCount, wrapper50.fill(error),  wrapper80.fill(key), errorLogCount[key]])
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    eData.append([bucket, iCount, wrapper50.fill(error),  wrapper30.fill(key), errorLogCount[key], wrapper30.fill(SynopsysErrorsWarningsDict[bucket]['short']), wrapper40.fill(SynopsysErrorsWarningsDict[bucket]['full'])])
+                                else:
+                                    eData.append([bucket, iCount, wrapper50.fill(error),  wrapper30.fill(key), errorLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        eData.append([bucket, iCount, wrapper40.fill(error),  wrapper50.fill(key), errorLogCount[key], wrapper50.fill(SynopsysErrorsWarningsDict[bucket]['short'])])
+                                    else:
+                                        eData.append([bucket, iCount, wrapper40.fill(error),  wrapper50.fill(key), errorLogCount[key], "NA"])
+                                else:
+                                    eData.append([bucket, iCount, wrapper50.fill(error),  wrapper80.fill(key), errorLogCount[key]])
             else:
                 if(int(args.report_level) > 1):
                     for error in instEWManager.GetErrorsListForBucket(bucket):
@@ -206,13 +235,16 @@ def GenStdoutReport(instEWManager, args):
         Debug(pprint.pformat(eData, indent=4))
 
     if(not args.errors_only):
-        if(int(args.report_level) > 2):
+        if(int(args.report_level) > 1):
             wHeaders.append("Warning Messages")
+        if(int(args.report_level) > 2):
             wHeaders.append("Log File")
-            wHeaders.append("Occurences")
-        else:
-            if(int(args.report_level) > 1):
-                wHeaders.append("Warning Messages")
+            wHeaders.append("FC")
+        if(int(args.report_level) > 3):
+            wHeaders.append("Short Description")
+        if(int(args.report_level) > 4):
+            wHeaders.append("Full Description")
+
         for bucket in instEWManager.GetWarningsBucketsList():
             iCount = instEWManager.GetWarningsCountForBucket(bucket)
             if(args.bucket and bucket not in args.bucket):
@@ -224,9 +256,37 @@ def GenStdoutReport(instEWManager, args):
                     warningLogCount = instEWManager.GetWarningsFileCountDictForBucketText(bucket, warning)
                     for key in warningLogCount.keys():
                         if(args.xls):
-                            wData.append([bucket, iCount, warning, key, warningLogCount[key]])
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    wData.append([bucket, iCount, warning,  key, warningLogCount[key], SynopsysErrorsWarningsDict[bucket]['short'], SynopsysErrorsWarningsDict[bucket]['full']])
+                                else:
+                                    wData.append([bucket, iCount, warning,  key, warningLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        wData.append([bucket, iCount, warning,  key, warningLogCount[key], SynopsysErrorsWarningsDict[bucket]['short']])
+                                    else:
+                                        wData.append([bucket, iCount, warning,  key, warningLogCount[key], "NA"])
+                                else:
+                                    wData.append([bucket, iCount, warning,  key, warningLogCount[key]])
                         else:
-                            wData.append([bucket, iCount, wrapper50.fill(warning), wrapper80.fill(key), warningLogCount[key]])
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    wData.append([bucket, iCount, wrapper50.fill(warning),  wrapper30.fill(key), warningLogCount[key], wrapper30.fill(SynopsysErrorsWarningsDict[bucket]['short']), wrapper40.fill(SynopsysErrorsWarningsDict[bucket]['full'])])
+                                else:
+                                    wData.append([bucket, iCount, wrapper50.fill(warning),  wrapper30.fill(key), warningLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        wData.append([bucket, iCount, wrapper40.fill(warning),  wrapper50.fill(key), warningLogCount[key], wrapper50.fill(SynopsysErrorsWarningsDict[bucket]['short'])])
+                                    else:
+                                        wData.append([bucket, iCount, wrapper40.fill(warning),  wrapper50.fill(key), warningLogCount[key], "NA"])
+                                else:
+                                    wData.append([bucket, iCount, wrapper50.fill(warning),  wrapper80.fill(key), warningLogCount[key]])
+                        # if(args.xls):
+                            # wData.append([bucket, iCount, warning, key, warningLogCount[key]])
+                        # else:
+                            # wData.append([bucket, iCount, wrapper50.fill(warning), wrapper80.fill(key), warningLogCount[key]])
             else:
                 if(int(args.report_level) > 1):
                     for warning in instEWManager.GetWarningsListForBucket(bucket):
@@ -276,7 +336,7 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
                 eWorksheet.set_column(i, i, width)
             eWorksheet.write_row(0, 0, eHeaders, bold)
             row = 1
-            prevData = 'StartingRow' 
+            prevData = 'StartingRow'
             for rowData in eData:
                 eWorksheet.write_row(row, 0, rowData, wrap)
                 if(int(args.report_level) >= 2):
@@ -299,7 +359,7 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
                 wWorksheet.set_column(i, i, width)
             wWorksheet.write_row(0, 0, wHeaders, bold)
             row = 1
-            prevData = 'StartingRow' 
+            prevData = 'StartingRow'
             for rowData in wData:
                 wWorksheet.write_row(row, 0, rowData, wrap)
                 if(int(args.report_level) >= 2):
