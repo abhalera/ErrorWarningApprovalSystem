@@ -14,19 +14,22 @@ import os
 import tqdm
 #import tkinter
 import argparse
-toolPath = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(toolPath + '/../lib')
+os.environ['EWAS_ROOT'] = os.path.abspath(os.path.join(__file__ ,"../.."))
+sys.path.append(os.environ['EWAS_ROOT'] + '/lib')
+
 from Logger import *
 from LogParser import *
 from FileSelecter import *
 from ErrorWarningManager import *
 from BucketsDatabaseManager import *
 from SynopsysErrorsWarnings import *
+from UsersManager import *
+from SessionManager import *
 
 def WelcomeBanner():
     import random
     import time
-    random.seed(time.clock)
+    random.seed(time.process_time())
     style = random.randint(0,7)
     if(style == 0):
         Info('''
@@ -221,6 +224,8 @@ def ParseCommandline():
             'add_bucket',
             'remove_bucket',
             'update_bucket',
+            'add_user',
+            'remove_user',
         ],
         default = 'nop'
     )
@@ -233,7 +238,7 @@ def ParseCommandline():
     parser.add_argument(
         '-db',
         '--database',
-        help  = "name of the database",
+        help  = "Name of the database",
         nargs = '?',
         const = 'default.db',
     )
@@ -629,10 +634,10 @@ def Parse_Bucket_Config_Files(args):
                     errorWarningBuckets['errors'][val.upper()] = bucket[section][val].split('```')
         Debug("Printing errorWarningBuckets")
         Debug(pprint.pformat(errorWarningBuckets, indent=4))
-
-def Create_Database(args, dbManager=None):
-    Info("TODO: Input = Database Name or None, Output = Should create a new sqlite database and add required tables...")
-    dbManager.Create_Database(args.database)
+def Create_Database(args, dbManager):
+    if(not dbManager):
+        Critical("dbManager is None. Can't create database. Exiting...")
+    dbManager.Create_Database(dbName=args.database)
 
 def List_Database(args):
     Info("TODO: Input = None, Output = Should list all the databases existing in the db sub-directory...")
@@ -649,6 +654,34 @@ def Remove_Bucket(args, bucketNamesList=None):
 def Update_Bucket(args, bucketsInfoDict=None):
     Info("TODO: Input = Dictionary of bucket information or None, Update the buckets information... Output = Success->True, Failure->False...")
 
+def Add_User(args, usersManager):
+    session = SessionManager()
+    import getpass
+    import hashlib
+    Info("Please enter the details about the user to be added below...")
+    username = input("Username: ")
+    password = getpass.getpass("Password: ")
+    email = input("Email: ")
+    isAdmin = input("Is Admin? 0->No, 1->Yes: ")
+    if(usersManager.Add_User(username=username, password=hashlib.md5(str(password).encode('utf-8')).hexdigest(), email=email, is_admin=bool(isAdmin))):
+        Critical("Could not add the user...")
+    else:
+        Info("User " + username + " successfully added to the database...")
+
+def Remove_User(args, usersManager):
+    session = SessionManager()
+    if(not session.IsAdmin()):
+        Critical("You are not an ADMINISTRATOR. You can not remove a user...")
+
+    import getpass
+    import hashlib
+    Info("Please enter the details about the user to be removed below...")
+    username = input("Username: ")
+    if(usersManager.Remove_User(username=username)):
+        Critical("Could not remove the user...")
+    else:
+        Info("User " + username + " successfully removed from the database...")
+
 if __name__ == '__main__':
     args = ParseCommandline()
 
@@ -661,7 +694,9 @@ if __name__ == '__main__':
     loggingLevel = None
     WelcomeBanner()
     # Parse Command-line Arguments
+    session = SessionManager()
     bucketsDbManager = BucketsDatabaseManager()
+    usersManager = UsersManager()
 
     if(args.config_files):
         Debug("Parsing directory configuration files...")
@@ -698,6 +733,12 @@ if __name__ == '__main__':
     if(args.cmd == 'update_bucket'):
         Debug("Executing update_bucket command...")
         Update_Bucket(args)
+    if(args.cmd == 'add_user'):
+        Debug("Executing add_user command...")
+        Add_User(args, usersManager)
+    if(args.cmd == 'remove_user'):
+        Debug("Executing remove_user command...")
+        Remove_User(args, usersManager)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
         Info(pprint.pformat(args))

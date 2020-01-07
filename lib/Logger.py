@@ -8,15 +8,21 @@ import logging
 
 def SetupLogger(fileName="Logger.log", loggingLevel=logging.INFO):
     # Logger Setup
-    logging.basicConfig(
-        filename=fileName,
-        format="%(asctime)s [%(levelname)-8.8s]  %(message)s",
-        datefmt='%Y-%m-%d %H:%M:%S',
-        level=loggingLevel,
-        filemode='w'
-        )
+    rootLogger= logging.getLogger()
+    rootLogger.setLevel(loggingLevel)
+    handler = logging.FileHandler(fileName, 'w', 'utf-8')
+    formatter = logging.Formatter('%(asctime)s [%(levelname)-8.8s]  %(message)s')
+    handler.setFormatter(formatter)
+    rootLogger.addHandler(handler)
+#    logging.basicConfig(
+#        filename=fileName,
+#        format="%(asctime)s [%(levelname)-8.8s]  %(message)s",
+#        datefmt='%Y-%m-%d %H:%M:%S',
+#        level=loggingLevel,
+#        filemode='w'
+#        )
     # Print to STDOUT also
-    logging.getLogger().addHandler(logging.StreamHandler())
+    rootLogger.addHandler(logging.StreamHandler())
 
 def Info(message=None):
     if(message != None):
@@ -24,23 +30,23 @@ def Info(message=None):
 
 def Print(message=None):
     if(message != None):
-        print(message)
-        logging.info(message)
+        print(str(message))
+        logging.info(str(message))
 
 def Warn(message=None):
     if(message != None):
-        logging.warning(message)
+        logging.warning(str(message))
 
 def Error(message=None):
     if(message != None):
-        logging.error(message)
+        logging.error(str(message))
 
 def Critical(message=None):
     if(message != None):
-        logging.critical(message)
+        logging.critical(str(message))
         exit(1)
 
 def Debug(message=None):
     if(message != None):
-        logging.debug(message)
+        logging.debug(str(message))
 
