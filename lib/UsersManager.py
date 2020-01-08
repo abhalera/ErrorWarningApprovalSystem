@@ -107,7 +107,7 @@ class UsersManager(metaclass=Singleton):
             return 0
         else:
             if (password == result.password):
-                Info("User = " + username + " successfully logged in...")
+                Info("User '" + username + "' successfully logged in...")
                 return bool(result.is_admin > 0)
             else:
                 Critical("Username and password are not matching. Please contact your EWAS Administratrator...")

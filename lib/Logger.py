@@ -4,7 +4,8 @@ Created on Dec 2, 2019
 @file  : Logger.py
 '''
 import logging
-
+from termcolor import colored
+import platform
 
 def SetupLogger(fileName="Logger.log", loggingLevel=logging.INFO):
     # Logger Setup
@@ -22,31 +23,50 @@ def SetupLogger(fileName="Logger.log", loggingLevel=logging.INFO):
 #        filemode='w'
 #        )
     # Print to STDOUT also
-    rootLogger.addHandler(logging.StreamHandler())
+    # rootLogger.addHandler(logging.StreamHandler())
 
 def Info(message=None):
     if(message != None):
         logging.info(message)
+        if(platform.system() == 'Windows'):
+            print("[INFO]: " + message)
+        else:
+            print(colored("[INFO]: ", attrs=['bold']) + message)
 
 def Print(message=None):
     if(message != None):
         print(str(message))
         logging.info(str(message))
 
+def Log(message=None):
+    if(message != None):
+        logging.info(str(message))
+
 def Warn(message=None):
     if(message != None):
         logging.warning(str(message))
+        if(platform.system() == 'Windows'):
+            print("[WARN]: " + message)
+        else:
+            print(colored("[WARN]: ", 'yellow', attrs=['bold']) + message)
 
 def Error(message=None):
     if(message != None):
-        logging.error(str(message))
+        logging.error(message)
+        if(platform.system() == 'Windows'):
+            print("[ERROR]: "+ message)
+        else:
+            print(colored("[ERROR]: ", 'red', attrs=['bold']) + colored(message, 'red'))
 
 def Critical(message=None):
     if(message != None):
         logging.critical(str(message))
+        if(platform.system() == 'Windows'):
+            print("[CRITICAL]: "+ message)
+        else:
+            print(colored("[CRITICAL]: ", 'red', attrs=['bold']) + colored(message, 'red'))
         exit(1)
 
 def Debug(message=None):
     if(message != None):
         logging.debug(str(message))
-

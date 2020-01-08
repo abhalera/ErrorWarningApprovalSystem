@@ -27,12 +27,13 @@ from UsersManager import *
 from SessionManager import *
 
 def WelcomeBanner():
-    import random
-    import time
-    random.seed(time.process_time())
-    style = random.randint(0,7)
+    # import random
+    # import time
+    # random.seed(time.process_time())
+    # style = random.randint(0,7)
+    style = 5
     if(style == 0):
-        Info('''
+        Print('''
         ___                               _       _
        (  _`\                            ( )  _  ( )                     _
        | (_(_) _ __  _ __   _    _ __    | | ( ) | |   _ _  _ __   ___  (_)  ___     __
@@ -52,7 +53,7 @@ def WelcomeBanner():
                                                                        ''')
 
     if(style == 1):
-        Info('''
+        Print('''
 
        ███████╗██████╗ ██████╗  ██████╗ ██████╗     ██╗    ██╗ █████╗ ██████╗ ███╗   ██╗██╗███╗   ██╗ ██████╗
        ██╔════╝██╔══██╗██╔══██╗██╔═══██╗██╔══██╗    ██║    ██║██╔══██╗██╔══██╗████╗  ██║██║████╗  ██║██╔════╝
@@ -70,7 +71,7 @@ def WelcomeBanner():
                                                                        ''')
 
     if(style == 2):
-        Info('''
+        Print('''
          #######                                #     #
          #       #####  #####   ####  #####     #  #  #   ##   #####  #    # # #    #  ####
          #       #    # #    # #    # #    #    #  #  #  #  #  #    # ##   # # ##   # #    #
@@ -90,7 +91,7 @@ def WelcomeBanner():
                                                                        ''')
 
     if(style == 3):
-        Info('''
+        Print('''
 
         ######## ########  ########   #######  ########     ##      ##    ###    ########  ##    ## #### ##    ##  ######
         ##       ##     ## ##     ## ##     ## ##     ##    ##  ##  ##   ## ##   ##     ## ###   ##  ##  ###   ## ##    ##
@@ -110,7 +111,7 @@ def WelcomeBanner():
                                                                        ''')
 
     if(style == 4):
-        Info('''
+        Print('''
 
       d88888b d8888b. d8888b.  .d88b.  d8888b.      db   d8b   db  .d8b.  d8888b. d8b   db d888888b d8b   db  d888b
       88'     88  `8D 88  `8D .8P  Y8. 88  `8D      88   I8I   88 d8' `8b 88  `8D 888o  88   `88'   888o  88 88' Y8b
@@ -128,7 +129,7 @@ YP   YP 88      88      88   YD  `Y88P'     YP    YP   YP Y88888P      `8888Y'  
                                                                        ''')
 
     if(style == 5):
-        Info('''
+        Print('''
         8888888888                                      888       888                           d8b
         888                                             888   o   888                           Y8P
         888                                             888  d8b  888
@@ -154,7 +155,7 @@ d88P     888 88888P"  88888P"  888     "Y88P"    Y88P   "Y888888 888       "Y888
                                                                        ''')
 
     if(style == 6):
-        Info('''
+        Print('''
       `7MM"""YMM                                        `7MMF'     A     `7MF'                             db
         MM    `7                                          `MA     ,MA     ,V
         MM   d    `7Mb,od8 `7Mb,od8 ,pW"Wq.`7Mb,od8        VM:   ,VVM:   ,V ,6"Yb.  `7Mb,od8 `7MMpMMMb.  `7MM  `7MMpMMMb.  .P"Ybmmm
@@ -177,7 +178,7 @@ d88P     888 88888P"  88888P"  888     "Y88P"    Y88P   "Y888888 888       "Y888
                                                                        ''')
 
     if(style == 7):
-        Info('''
+        Print('''
        88888888b                                        dP   dP   dP                            oo
        88                                               88   88   88
       a88aaaa    88d888b. 88d888b. .d8888b. 88d888b.    88  .8P  .8P .d8888b. 88d888b. 88d888b. dP 88d888b. .d8888b.
@@ -328,6 +329,7 @@ def GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
 def GenStdoutReport(instEWManager, args):
     from tabulate import tabulate
     import textwrap
+    import termcolor
     wrapper120 = textwrap.TextWrapper(width=120)
     wrapper80  = textwrap.TextWrapper(width=80)
     wrapper50  = textwrap.TextWrapper(width=50)
@@ -397,7 +399,9 @@ def GenStdoutReport(instEWManager, args):
                     eData.append([bucket, iCount])
 
         if not args.xls:
-            Info('\n' + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
+            print(colored('\nError information listed below...\n', 'yellow', attrs=['bold']) + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
+            Log('\nError information listed below...\n' + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
+
         Debug("Printing eData...")
         Debug(pprint.pformat(eData, indent=4))
 
@@ -464,7 +468,8 @@ def GenStdoutReport(instEWManager, args):
                 else:
                     wData.append([bucket, instEWManager.GetWarningsCountForBucket(bucket)])
         if not args.xls:
-            Info('\n' + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
+            print(colored('\nWarning information listed below...\n', 'yellow', attrs=['bold']) + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
+            Log('\nWarning information listed below...\n' + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
         Debug("Printing wData...")
         Debug(pprint.pformat(wData, indent=4))
 

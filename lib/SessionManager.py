@@ -8,12 +8,12 @@ import os
 import re
 import pprint
 import getpass
-import time 
+import time
 from pathlib import Path
 
 from Logger import *
 from UsersManager import *
-SESSION_TIMEOUT = 60
+SESSION_TIMEOUT = 3600
 class Singleton(type):
     """
     Define an Instance operation that lets clients access its unique
