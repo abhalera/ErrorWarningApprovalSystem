@@ -639,11 +639,11 @@ def List_Files(args):
             Info(logFile)
 
 def Parse_Bucket_Config_Files(args, files=None):
-    Debug("The bucket configuration file(s) are " + ' '.join(args.bucket_files))
     import configparser
     if(not files):
         files = args.bucket_files
 
+    Debug("The bucket configuration file(s) are " + ' '.join(files))
     for bucketFile in files:
         bucket = configparser.ConfigParser()
         Debug("Parsing bucket config file = " + bucketFile)
@@ -739,6 +739,8 @@ if __name__ == '__main__':
     WelcomeBanner()
     session = SessionManager()
     settingsManager = SettingsManager()
+    Parse_Config_Files(args, settingsManager.Get_Search_Config_Files_List())
+    Parse_Bucket_Config_Files(args, settingsManager.Get_Bucket_Config_Files_List())
     bucketsDbManager = BucketsDatabaseManager()
     usersManager = UsersManager()
 

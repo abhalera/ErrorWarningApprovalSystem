@@ -90,21 +90,20 @@ class BucketsDatabaseManager(metaclass = Singleton):
         engine = create_engine('sqlite:///' + dbName, echo = True)
         meta = MetaData()
         # Describe User Table
+        # TODO: Later move everything to one database
         usersTable = Table(
            'users', meta,
-           Column('id', Integer, primary_key = True),
-           Column('name', String),
+           Column('id', Integer, primary_key = True, autoincrement = True),
+           Column('username', String),
            Column('email', String),
-           Column('unix_id', String),
-           Column('unix_id', String),
-           Column('is_admin', Boolean),
+           Column('is_admin', Integer),
            Column('password', String),
         )
 
         # Describe Buckets Table
         bucketsTable = Table(
            'buckets', meta,
-           Column('id', Integer, primary_key = True),
+           Column('id', Integer, primary_key = True, autoincrement = True),
            Column('name', String),
            Column('status', String),
            Column('owner', Integer),
@@ -112,6 +111,10 @@ class BucketsDatabaseManager(metaclass = Singleton):
         meta.create_all(engine)
         Debug("Database " + dbName + " successfully created and tables users and buckets inserted successfully.")
 
+    def Add_Bucket(self, dbName=None):
+        '''
+        Create a new database
+        '''
 
 
 
