@@ -8,13 +8,30 @@ import os
 import re
 import pprint
 import sqlalchemy
+import getpass
+import json
 
 from Logger import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, Boolean
 from sqlalchemy import create_engine
 
 
-class BucketsDatabaseManager(object):
+class Singleton(type):
+    """
+    Define an Instance operation that lets clients access its unique
+    instance.
+    """
+
+    def __init__(cls, name, bases, attrs, **kwargs):
+        super().__init__(name, bases, attrs)
+        cls._instance = None
+
+    def __call__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__call__(*args, **kwargs)
+        return cls._instance
+
+class BucketsDatabaseManager(metaclass = Singleton):
     '''
     BucketsDatabaseManager
     '''
@@ -22,6 +39,39 @@ class BucketsDatabaseManager(object):
     # Constructor
     def __init__(self):
         Debug("BucketsDatabaseManager Constructor called...")
+        self._user = getpass.getuser()
+        if(not os.path.isdir(os.environ['EWAS_ROOT'] + '/.sessions/')):
+            try:
+                os.mkdir(os.environ['EWAS_ROOT'] + '/.sessions/')
+            except:
+                Critical("Error while constructing sessions manager. Please contact EWAS Administratrator...")
+        self._jsonFile = os.environ['EWAS_ROOT'] + '/.sessions/.' + self._user + '_db'
+        self._jsonData = {}
+        if(os.path.isfile(self._jsonFile)):
+            self._Read_Database_JSON()
+
+
+    def _Read_Database_JSON(self):
+        with open(self._jsonFile) as jsonFile:
+            try:
+                self._jsonData = json.load(jsonFile)
+            except:
+                Warn("Looks like " + self._jsonFile + " is empty. Ignoring...")
+
+    def Select_Database(self, dbFile):
+        self._jsonData['selected_database'] = dbFile
+        with open(self._jsonFile, 'w') as jsonFile:
+            try:
+                json.dump(self._jsonData, jsonFile)
+            except:
+                Warn("Could not write to " + self._jsonFile)
+
+    def Selected_Database(self):
+        if('selected_database' in self._jsonData):
+            return self._jsonData['selected_database']
+        else:
+            Warn("Nothing is selected as of now. Please run -cmd select_database to select current database")
+            return "None"
 
     def Create_Database(self, dbName=None):
         '''

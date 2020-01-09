@@ -25,6 +25,7 @@ from BucketsDatabaseManager import *
 from SynopsysErrorsWarnings import *
 from UsersManager import *
 from SessionManager import *
+from SettingsManager import *
 
 def WelcomeBanner():
     # import random
@@ -221,12 +222,15 @@ def ParseCommandline():
             'clean',
             'create_database',
             'list_database',
+            'select_database',
+            'current_database',
             'report_bucket',
             'add_bucket',
             'remove_bucket',
             'update_bucket',
             'add_user',
             'remove_user',
+            'show_config'
         ],
         default = 'nop'
     )
@@ -239,7 +243,7 @@ def ParseCommandline():
     parser.add_argument(
         '-db',
         '--database',
-        help  = "Name of the database",
+        help  = "Database number",
         nargs = '?',
         const = 'default.db',
     )
@@ -570,10 +574,29 @@ def List_Buckets(args):
     args.report_level = 1
     Report(args)
 
-def Parse_Config_Files(args):
+#   Database related functions
+def List_Databases(args):
+    Info("List of Databases available = ")
+    i = 1
+    for database in SettingsManager().Get_Databases_List():
+        Info('\t' + str(i) + '. '+ database)
+        i+=1
+
+def Select_Database(args):
+    List_Databases(args)
+    dbNumber = int(input("Enter database number to select: "))-1
+    BucketsDatabaseManager().Select_Database(SettingsManager().Get_Database(dbNumber))
+    Current_Database(args)
+
+def Current_Database(args):
+    Info("Current Database : " + BucketsDatabaseManager().Selected_Database())
+
+def Parse_Config_Files(args, files=None):
     import configparser
-    # filesPatternsToParseDict = {'directories':[], 'global_exclude_patterns':[]}
-    for configFile in args.config_files:
+    if(not files):
+        files = args.config_files
+
+    for configFile in files:
         config = configparser.ConfigParser()
         Debug("Parsing config file = " + configFile)
         if(not os.path.isfile(configFile)):
@@ -615,10 +638,13 @@ def List_Files(args):
         for logFile in fileList:
             Info(logFile)
 
-def Parse_Bucket_Config_Files(args):
+def Parse_Bucket_Config_Files(args, files=None):
     Debug("The bucket configuration file(s) are " + ' '.join(args.bucket_files))
     import configparser
-    for bucketFile in args.bucket_files:
+    if(not files):
+        files = args.bucket_files
+
+    for bucketFile in files:
         bucket = configparser.ConfigParser()
         Debug("Parsing bucket config file = " + bucketFile)
         if(not os.path.isfile(bucketFile)):
@@ -639,13 +665,11 @@ def Parse_Bucket_Config_Files(args):
                     errorWarningBuckets['errors'][val.upper()] = bucket[section][val].split('```')
         Debug("Printing errorWarningBuckets")
         Debug(pprint.pformat(errorWarningBuckets, indent=4))
+
 def Create_Database(args, dbManager):
     if(not dbManager):
         Critical("dbManager is None. Can't create database. Exiting...")
     dbManager.Create_Database(dbName=args.database)
-
-def List_Database(args):
-    Info("TODO: Input = None, Output = Should list all the databases existing in the db sub-directory...")
 
 def Report_Bucket(args, bucketNamesList=None):
     Info("TODO: Input = List of bucket names or None, Output = Should return details of bucket information...")
@@ -687,7 +711,22 @@ def Remove_User(args, usersManager):
     else:
         Info("User " + username + " successfully removed from the database...")
 
+def Show_Config(args):
+    session = SessionManager()
+    Print("Printing current settings for EWAS...")
+    Info("Default Database = " + SettingsManager().Get_Default_Database())
+    Info("List of Databases = ")
+    for database in SettingsManager().Get_Databases_List():
+        Info('\t' + database)
+    Info("List of Search Config Files = ")
+    for myFile in SettingsManager().Get_Search_Config_Files_List():
+        Info('\t' + myFile)
+    Info("List of Bucket Config Files = ")
+    for myFile in SettingsManager().Get_Bucket_Config_Files_List():
+        Info('\t' + myFile)
+
 if __name__ == '__main__':
+    # Parse Command-line Arguments
     args = ParseCommandline()
 
     # Setup the Logger
@@ -698,8 +737,8 @@ if __name__ == '__main__':
     SetupLogger(fileName="Approval.log", loggingLevel=loggingLevel)
     loggingLevel = None
     WelcomeBanner()
-    # Parse Command-line Arguments
     session = SessionManager()
+    settingsManager = SettingsManager()
     bucketsDbManager = BucketsDatabaseManager()
     usersManager = UsersManager()
 
@@ -725,7 +764,13 @@ if __name__ == '__main__':
         Create_Database(args, bucketsDbManager)
     if(args.cmd == 'list_database'):
         Debug("Executing list_database command...")
-        List_Database(args)
+        List_Databases(args)
+    if(args.cmd == 'select_database'):
+        Debug("Executing select_database command...")
+        Select_Database(args)
+    if(args.cmd == 'current_database'):
+        Debug("Executing current_database command...")
+        Current_Database(args)
     if(args.cmd == 'report_bucket'):
         Debug("Executing report_bucket command...")
         Report_Bucket(args)
@@ -744,6 +789,9 @@ if __name__ == '__main__':
     if(args.cmd == 'remove_user'):
         Debug("Executing remove_user command...")
         Remove_User(args, usersManager)
+    if(args.cmd == 'show_config'):
+        Debug("Executing show_config command...")
+        Show_Config(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
         Info(pprint.pformat(args))
