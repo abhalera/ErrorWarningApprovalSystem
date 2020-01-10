@@ -61,8 +61,17 @@ class SettingsManager(metaclass=Singleton):
 
     # Get Search Config Files List
     def Get_Search_Config_Files_List(self):
-        return map(str.strip, self._config[self._defaultTool]['search_config_files'].split(','))
+        return list(map(str.strip, self._config[self._defaultTool]['search_config_files'].split(',')))
 
     # Get Bucket Config Files List
     def Get_Bucket_Config_Files_List(self):
-        return map(str.strip, self._config[self._defaultTool]['bucket_config_files'].split(','))
+        return list(map(str.strip, self._config[self._defaultTool]['bucket_config_files'].split(',')))
+
+    # Get any setting.
+    def Get_Setting(self, settingName):
+        if(not settingName in self._config[self._defaultTool]):
+            Critical("Setting '" + settingName + "' not found in section '" + self._defaultTool + "' in file '.catalyzer.ini'")
+        else:
+            # TODO: Add a check of list or scalar and add map function to remove spaces
+            return self._config[self._defaultTool][settingName]
+

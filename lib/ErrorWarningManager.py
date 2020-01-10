@@ -13,82 +13,89 @@ from LogParser import *
 from FileSelecter import *
 from SynopsysErrorsWarnings import *
 
+# Global variabls to hold Search File Patterns and Error Warning Bucket patterns
+filesPatternsToParseDict = { 'directories': [ ], 'global_exclude_patterns' : [ ], }
+errorWarningBucketsDict = { 'warnings': { }, 'errors': { }, } 
+
+# TODO: Remove later...
 # Specify various directories and file patterns to be used for parsing
-filesPatternsToParseDict = {
-    # List of directories and the file patterns
-    'directories': [
+# filesPatternsToParseDict = {
+    # # List of directories and the file patterns
+    # 'directories': [
         # You can specify multiple such blocks
         # {
-        #     'path': '/nfs/site/home/amitvinx',
-        #     'exclude_dirs' : [
-        #         '.vnc',
-        #     ],
-        #     'include' : [
-        #         '.*\.log',
-        #     ],
-        #     'exclude' : [
-        #         '^\.',
-        #     ],
-        #     'recursive' : True,
-        #     'exclude_hidden' : True,
-        #     'ignore' : False,
+            # 'path': '/nfs/site/home/amitvinx',
+            # 'exclude_dirs' : [
+                # '.vnc',
+            # ],
+            # 'include' : [
+                # '.*\.log',
+            # ],
+            # 'exclude' : [
+                # '^\.',
+            # ],
+            # 'recursive' : True,
+            # 'exclude_hidden' : True,
+            # 'ignore' : False,
         # },
         # {
-        #     'path': '../sample_logs',
-        #     # Exclude file if directory/sub-directory matches following patterns
-        #     'exclude_dirs' : [
-        #         'scripts_flow',
-        #     ],
-        #     # Include files that match following regular expressions
-        #     'include' : [
-        #         r'.*\.log$',
-        #         # r'\.rpt$',
-        #     ],
-        #     # Exclude files that match following regular expressions
-        #     'exclude' : [
-        #         '^\.',
-        #         'scripts_flow',
-        #     ],
-        #     # Control recursive search
-        #     'recursive' : True,
-        #     # Exclude hidden_directories
-        #     'exclude_hidden' : True,
-        #     'ignore' : False,
+            # 'path': '../sample_logs',
+            # # Exclude file if directory/sub-directory matches following patterns
+            # 'exclude_dirs' : [
+                # 'scripts_flow',
+            # ],
+            # # Include files that match following regular expressions
+            # 'include' : [
+                # r'.*\.log$',
+                # # r'\.rpt$',
+            # ],
+            # # Exclude files that match following regular expressions
+            # 'exclude' : [
+                # '^\.',
+                # 'scripts_flow',
+            # ],
+            # # Control recursive search
+            # 'recursive' : True,
+            # # Exclude hidden_directories
+            # 'exclude_hidden' : True,
+            # 'ignore' : False,
         # },
-    ],
-    # Global patterns to exclude
-    'global_exclude_patterns' : [
+    # ],
+    # # Global patterns to exclude
+    # 'global_exclude_patterns' : [
         # 'abc',
         # 'def',
         # 'jkl',
         # 'Xion',
-    ],
-}
+    # ],
+# }
 
-errorWarningBuckets = {
-    'warnings': {
+
+# TODO: Remove later...
+# errorWarningBucketsDict = {
+    # 'warnings': {
         # 'WARNING_CHANGED_INSTANCE_NAME'  : [
-        #     'Warning: Changed instance name tdl_eu_gpgpu_ctxstart_reg to tdl_eu_gpgpu_ctxstart_reg_inst .*',
+            # 'Warning: Changed instance name tdl_eu_gpgpu_ctxstart_reg to tdl_eu_gpgpu_ctxstart_reg_inst .*',
         # ],
         # 'WARNING_INCONSISTENT_PIN_DIR'  : [
-        #  'Warning: The pin direction of .* pin on .* cell in the .* technology library is inconsistent with the same-name pin in the .* physical library. No physical link for the logical lib cell. .*'
+         # 'Warning: The pin direction of .* pin on .* cell in the .* technology library is inconsistent with the same-name pin in the .* physical library. No physical link for the logical lib cell. .*'
         # ],
         # 'WARNING_NON_DEFAULT_CONTACT_CODE'  : [
-        #     'Warning: Non-default ContactCode .* on layer .* has cut size with no matching cut name found.'
+            # 'Warning: Non-default ContactCode .* on layer .* has cut size with no matching cut name found.'
         # ],
 
 
 
-    },
-    'errors': {
+    # },
+    # 'errors': {
         # 'ERROR_NO_ATTRIBUTES'    : [
-        #     'ERROR==> No attributes matching pattern.*',
+            # 'ERROR==> No attributes matching pattern.*',
         # ],
         # 'ERROR_UNABLE_EXPAND'    : [
-        #     'ERROR==> Unable to expand clocks for base clock.*',
+            # 'ERROR==> Unable to expand clocks for base clock.*',
         # ],
-    },
-}
+    # },
+# }
 
 class ErrorWarningManager(object):
     '''
@@ -97,28 +104,24 @@ class ErrorWarningManager(object):
 
     # Constructor
     # Requires file patterns to search for Error and warnings
-    def __init__(self, filePatterns=None, errorWarningBuckets=None):
+    def __init__(self):
         Debug("ErrorWarningManager Constructor called...")
 
         # File patterns checks
-        if(filePatterns == None):
-            Critical("Can not create ErrorWarningManager without  valid file" +
-                     " patterns data. Please provide a valid file patterns " +
-                     " using filePatterns parameter...")
+        if(filesPatternsToParseDict == None):
+            Critical("filesPatternsToParseDict is None... It's a bug...")
 
         # Buckets checks
-        if(errorWarningBuckets == None):
-            Critical("Can not create ErrorWarningManager without  valid buckets" +
-                     " data. Please provide a valid buckets data using" +
-                     " errorWarningBuckets parameter...")
+        if(errorWarningBucketsDict == None):
+            Critical("errorWarningBucketsDict is None... It's a bug...")
 
-        self._filePatterns = filePatterns
-        self._errorWarningBuckets = errorWarningBuckets
+        self._filePatterns = filesPatternsToParseDict
+        self._errorWarningBucketsDict = errorWarningBucketsDict
         self._fileList = GetFileList(self._filePatterns)
         self._bucketsInfo = {'errors': {}, 'warnings': {}}
-        for errorBucket in self._errorWarningBuckets['errors']:
+        for errorBucket in self._errorWarningBucketsDict['errors']:
             self._bucketsInfo['errors'][errorBucket] = {'text':{},'count':0}
-        for warnBucket in self._errorWarningBuckets['warnings']:
+        for warnBucket in self._errorWarningBucketsDict['warnings']:
             self._bucketsInfo['warnings'][warnBucket] = {'text':{},'count':0}
 
         self._bucketsInfo['errors']['uncategorized'] = {'text':{},'count':0}
@@ -195,9 +198,9 @@ class ErrorWarningManager(object):
 
                         continue
 
-                for bucket in self._errorWarningBuckets['errors']:
+                for bucket in self._errorWarningBucketsDict['errors']:
                     # Check user specified buckets
-                    for pattern in self._errorWarningBuckets['errors'][bucket]:
+                    for pattern in self._errorWarningBucketsDict['errors'][bucket]:
                         searchExpression = pattern
                         searchExpression = re.sub("\s+", "\\\s+", searchExpression.strip())
                         if(bool(re.search(searchExpression, item))):
@@ -255,9 +258,9 @@ class ErrorWarningManager(object):
 
                         continue
 
-                for bucket in self._errorWarningBuckets['warnings']:
+                for bucket in self._errorWarningBucketsDict['warnings']:
                     # Check user specified buckets
-                    for pattern in self._errorWarningBuckets['warnings'][bucket]:
+                    for pattern in self._errorWarningBucketsDict['warnings'][bucket]:
                         searchExpression = pattern
                         searchExpression = re.sub("\s+", "\\\s+", searchExpression.strip())
                         if(bool(re.search(searchExpression, item))):

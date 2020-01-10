@@ -14,6 +14,7 @@ import os
 import tqdm
 #import tkinter
 import argparse
+import cmd
 os.environ['EWAS_ROOT'] = os.path.abspath(os.path.join(__file__ ,"../.."))
 sys.path.append(os.environ['EWAS_ROOT'] + '/lib')
 
@@ -26,6 +27,7 @@ from SynopsysErrorsWarnings import *
 from UsersManager import *
 from SessionManager import *
 from SettingsManager import *
+# from ErrorWarningApprovalSystemCmd import *
 
 def WelcomeBanner():
     # import random
@@ -198,14 +200,7 @@ d8'    88                                                        88    88.    "'
            dP       dP                                                            d8888P
                                                                        ''')
 
-
-def ParseCommandline():
-    parser = argparse.ArgumentParser(
-        prog = "ErrorWarningApproval.py",
-        description = ("Error and Warnings Administratrator. "
-                       "Keep the track of Errors and Warnings "
-                       "in your project...")
-    )
+def AddArguments(parser):
     parser.add_argument(
         'help',
         help = "Get help for a command",
@@ -230,7 +225,8 @@ def ParseCommandline():
             'update_bucket',
             'add_user',
             'remove_user',
-            'show_config'
+            'show_config',
+            'bucket_management'
         ],
         default = 'nop'
     )
@@ -322,6 +318,14 @@ def ParseCommandline():
         action = 'store_true'
     )
 
+def ParseCommandline(text=None):
+    parser = argparse.ArgumentParser(
+        prog = "ErrorWarningApproval.py",
+        description = ("Error and Warnings Administratrator. "
+                       "Keep the track of Errors and Warnings "
+                       "in your project...")
+    )
+    AddArguments(parser)
     args = parser.parse_args()
     return args
 
@@ -403,6 +407,9 @@ def GenStdoutReport(instEWManager, args):
                     eData.append([bucket, iCount])
 
         if not args.xls:
+            # TODO: setenv LESSCHARSET 'utf-8'
+            # TODO: setenv LESS R
+            from pydoc import pager
             print(colored('\nError information listed below...\n', 'yellow', attrs=['bold']) + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
             Log('\nError information listed below...\n' + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
 
@@ -472,6 +479,9 @@ def GenStdoutReport(instEWManager, args):
                 else:
                     wData.append([bucket, instEWManager.GetWarningsCountForBucket(bucket)])
         if not args.xls:
+            # TODO: setenv LESSCHARSET 'utf-8'
+            # TODO: setenv LESS R
+            from pydoc import pager
             print(colored('\nWarning information listed below...\n', 'yellow', attrs=['bold']) + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
             Log('\nWarning information listed below...\n' + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
         Debug("Printing wData...")
@@ -565,10 +575,46 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
                 else:
                     Warn("OS not supported for e-mailing information...")
 
+# Global Instance of ErrorWarningManager
+instEWManager = None
+
 def Report(args):
-    # Instantiate ErrorWarningManager
-    instEWManager = ErrorWarningManager(filesPatternsToParseDict, errorWarningBuckets)
+    import pickle
+    instLoadSaveFile = '.EWAS_ErrorWarningManagerInst.pkl'
+    if(os.path.isfile(instLoadSaveFile)):
+        if(int(SettingsManager().Get_Setting('use_cached_data')) > 0):
+            Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl as user wants to use cached data as indicated in .catalyzer.ini")
+            with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
+                instEWManager = pickle.load(loadObjFile)
+        else:
+            fileUpdateTime     = time.ctime(os.path.getmtime(instLoadSaveFile))
+            lstUpdTimeFrmEpoch = int(os.path.getmtime(instLoadSaveFile))
+            crrntTimeFrmEpoch  = int(time.time())
+            diffInSeconds = crrntTimeFrmEpoch - lstUpdTimeFrmEpoch
+            Debug("ErrorWarningManagerInst Save-Load File update time                        = " + str(fileUpdateTime))
+            Debug("ErrorWarningManagerInst Save-Load File update time in seconds since Epoch = " + str(lstUpdTimeFrmEpoch))
+            Debug("Current Time in seconds since Epoch                                       = " + str(crrntTimeFrmEpoch))
+            Debug("Difference in last update time and current time in seconds                = " + str(diffInSeconds))
+            delay = str(diffInSeconds) + " Seconds"
+            if(diffInSeconds >= 60 and diffInSeconds < 3600):
+                delay = str(int(diffInSeconds/60)) + " Minutes"
+            if(diffInSeconds >= 3660):
+                delay = str(int(diffInSeconds/3600)) + " Hours"
+            Info("Previous run data which was generated " + delay + " ago...")
+            choice = input("Do you want to use it? [Y/n]: ")
+            if(choice == '' or choice == 'y' or choice == 'Y' or choice == 'yes' or choice == 'Yes' or choice == 'YES'):
+                Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl")
+                with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
+                    instEWManager = pickle.load(loadObjFile)
+            else:
+                # Instantiate ErrorWarningManager
+                Debug("Creating new instance of ErrorWarningManager")
+                instEWManager = ErrorWarningManager()
+
     GenStdoutReport(instEWManager, args)
+    with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
+        Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
+        pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
 
 def List_Buckets(args):
     args.report_level = 1
@@ -642,7 +688,6 @@ def Parse_Bucket_Config_Files(args, files=None):
     import configparser
     if(not files):
         files = args.bucket_files
-
     Debug("The bucket configuration file(s) are " + ' '.join(files))
     for bucketFile in files:
         bucket = configparser.ConfigParser()
@@ -659,12 +704,12 @@ def Parse_Bucket_Config_Files(args, files=None):
             for val in bucket[section]:
                 # We are processing the warnings section
                 if section.lower() == "warnings":
-                    errorWarningBuckets['warnings'][val.upper()] = bucket[section][val].split('```')
+                    errorWarningBucketsDict['warnings'][val.upper()] = bucket[section][val].split('```')
                 # We are processing the errors section
                 else:
-                    errorWarningBuckets['errors'][val.upper()] = bucket[section][val].split('```')
-        Debug("Printing errorWarningBuckets")
-        Debug(pprint.pformat(errorWarningBuckets, indent=4))
+                    errorWarningBucketsDict['errors'][val.upper()] = bucket[section][val].split('```')
+        Debug("Printing errorWarningBucketsDict")
+        Debug(pprint.pformat(errorWarningBucketsDict, indent=4))
 
 def Create_Database(args, dbManager):
     if(not dbManager):
@@ -724,6 +769,119 @@ def Show_Config(args):
     Info("List of Bucket Config Files = ")
     for myFile in SettingsManager().Get_Bucket_Config_Files_List():
         Info('\t' + myFile)
+
+
+def Bucket_Management(args):
+    # class ErrorWarningApprovalSystemCmd(cmd.Cmd):
+        # '''
+        # ErrorWarningApprovalSystemCmd
+        # '''
+
+        # # Constructor
+        # #
+        # def __init__(self, tool="EWAS"):
+            # Debug("ErrorWarningApprovalSystemCmd Constructor called...")
+
+        # prompt = '[EWAS]:\> '
+        # intro = "Simple command processor example."
+        # doc_header = 'doc_header'
+        # misc_header = 'misc_header'
+        # undoc_header = 'undoc_header'
+        # ruler = '-'
+
+        # def do_show(self):
+            # print("Showing the list of buckets...")
+        # def do_EOF(self, line):
+            # "Exit"
+            # return True
+    # ErrorWarningApprovalSystemCmd().cmdloop()
+    class ErrorWarningApprovalSystemCmd(cmd.Cmd):
+        """Buckets Management Utility of Error Warnings Approval System"""
+        """Type help to get help about various commands possible for Buckets Management"""
+
+        prompt = colored('[EWAS]:\> ', attrs=['bold'])
+        intro = "Buckets Management Utility of Error Warnings Approval System\nType help to get help about various commands possible for Buckets Management\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+
+        doc_header = 'doc_header'
+        misc_header = 'misc_header'
+        undoc_header = 'undoc_header'
+
+        ruler = '-'
+
+
+        def do_exit(self, line):
+            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
+            return True
+
+        def do_bye(self, line):
+            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
+            return True
+
+        def do_q(self,line):
+            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
+            return True
+
+        def do_x(self,line):
+            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
+            return True
+
+        def help_report_errors(self):
+            print('\n'.join([
+                "",
+                '################################################################################',
+                '#                This command displays error information...                    #',
+                '################################################################################',
+                "",
+                'report_errors [level=1|2|3|4|5]',
+                "",
+                'E.g.',
+                '\treport_errors 1',
+                '\treport_errors 5',
+                ]))
+
+        def do_report_errors(self, level):
+            parser = argparse.ArgumentParser()
+            AddArguments(parser)
+            cmdArgs = parser.parse_args(level.split('\s+'))
+            print(cmdArgs)
+            if(not str(level).isnumeric()):
+                Error("Please provide a numeric value for level betwen 1 to 5...")
+                self.help_report_errors()
+            else:
+                args.errors_only = True
+                args.warnings_only = False
+                args.report_level = int(level)
+                Report(args)
+
+        def help_report_warnings(self):
+            print('\n'.join([
+                "",
+                '################################################################################',
+                '#                This command displays warning information...                  #',
+                '################################################################################',
+                "",
+                'report_warnings [level=1|2|3|4|5]',
+                "",
+                'E.g.',
+                '\treport_warnings 1',
+                '\treport_warnings 5',
+                ]))
+
+        def do_report_warnings(self, level):
+            if(not str(level).isnumeric()):
+                Error("Please provide a numeric value for level betwen 1 to 5...")
+                self.help_report_warnings()
+            else:
+                args.errors_only = False
+                args.warnings_only = True
+                args.report_level = int(level)
+                Report(args)
+
+        def do_quit(self, line):
+            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
+            return True
+
+    ErrorWarningApprovalSystemCmd().cmdloop()
 
 if __name__ == '__main__':
     # Parse Command-line Arguments
@@ -794,6 +952,9 @@ if __name__ == '__main__':
     if(args.cmd == 'show_config'):
         Debug("Executing show_config command...")
         Show_Config(args)
+    if(args.cmd == 'bucket_management'):
+        Debug("Executing bucket_management command...")
+        Bucket_Management(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
         Info(pprint.pformat(args))
