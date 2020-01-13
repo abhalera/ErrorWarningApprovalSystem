@@ -14,7 +14,26 @@ import json
 from Logger import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, Boolean
 from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 
+Base = declarative_base()
+
+class Buckets(Base):
+   __tablename__ = 'buckets'
+   id = Column(Integer, primary_key=True)
+   name   = Column(String)
+   status = Column(String)
+   owner  = Column(String)
+
+class Users(Base):
+   __tablename__ = 'users'
+   id = Column(Integer, primary_key=True)
+   username = Column(String)
+   password = Column(String)
+   email= Column(String)
+   is_admin = Column(Integer)
 
 class Singleton(type):
     """
@@ -47,8 +66,13 @@ class BucketsDatabaseManager(metaclass = Singleton):
                 Critical("Error while constructing sessions manager. Please contact EWAS Administratrator...")
         self._jsonFile = os.environ['EWAS_ROOT'] + '/.sessions/.' + self._user + '_db'
         self._jsonData = {}
+        self._selectedDatabase = None
         if(os.path.isfile(self._jsonFile)):
             self._Read_Database_JSON()
+            self._selectedDatabase = self._jsonData['selected_database']
+            self._engine = create_engine('sqlite:///' + self._selectedDatabase, echo = False)
+            self._base = declarative_base()
+            self._session = sessionmaker(bind = self._engine)()
 
 
     def _Read_Database_JSON(self):
@@ -65,13 +89,52 @@ class BucketsDatabaseManager(metaclass = Singleton):
                 json.dump(self._jsonData, jsonFile)
             except:
                 Warn("Could not write to " + self._jsonFile)
+        self._engine  = create_engine('sqlite:///' + dbFile, echo = False)
+        self._base    = declarative_base()
+        self._session = sessionmaker(bind = self._engine)()
+        self._selectedDatabase = dbFile
 
     def Selected_Database(self):
         if('selected_database' in self._jsonData):
             return self._jsonData['selected_database']
         else:
-            Warn("Nothing is selected as of now. Please run -cmd select_database to select current database")
+            Warn("Nothing is selected as of now. Please use select_database command to select current database")
             return "None"
+
+    def Get_Bucket_Information(self, bucketName):
+        if(not self._selectedDatabase):
+            Error("Nothing is selected as of now. Please use select_database command to select current database")
+            return
+        result = self._session.query(Buckets).filter(Buckets.name == bucketName).first()
+        if(not result):
+            return 'UNASSIGNED', 'UNASSIGNED'
+        else:
+            return result.status, result.owner
+
+    def Assign_Bucket(self, bucketName, bucketOwner):
+        if(not self._selectedDatabase):
+            Error("Nothing is selected as of now. Please use select_database command to select current database")
+            return 1
+        result = self._session.query(Buckets).filter(Buckets.name == bucketName).first()
+        if(not result):
+            # Insert
+            try:
+                self._session.add(Buckets(name=bucketName, status="Open", owner=bucketOwner))
+                return self._session.commit()
+            except SQLAlchemyError as e:
+                Error("BucketsDatabaseManager ERROR occured. " + str(e))
+                self._session.rollback()
+                return 1
+        else:
+            # Update
+            try:
+                result.owner = bucketOwner
+                self._session.flush()
+                return self._session.commit()
+            except SQLAlchemyError as e:
+                Error("BucketsDatabaseManager ERROR occured. " + str(e))
+                self._session.rollback()
+                return 1
 
     def Create_Database(self, dbName=None):
         '''
@@ -106,7 +169,7 @@ class BucketsDatabaseManager(metaclass = Singleton):
            Column('id', Integer, primary_key = True, autoincrement = True),
            Column('name', String),
            Column('status', String),
-           Column('owner', Integer),
+           Column('owner', String),
         )
         meta.create_all(engine)
         Debug("Database " + dbName + " successfully created and tables users and buckets inserted successfully.")

@@ -15,6 +15,10 @@ import tqdm
 #import tkinter
 import argparse
 import cmd
+import pickle
+import textwrap
+import termcolor
+from tabulate import tabulate
 os.environ['EWAS_ROOT'] = os.path.abspath(os.path.join(__file__ ,"../.."))
 sys.path.append(os.environ['EWAS_ROOT'] + '/lib')
 
@@ -335,9 +339,6 @@ def GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
 
 # Print Report on STDOUT
 def GenStdoutReport(instEWManager, args):
-    from tabulate import tabulate
-    import textwrap
-    import termcolor
     wrapper120 = textwrap.TextWrapper(width=120)
     wrapper80  = textwrap.TextWrapper(width=80)
     wrapper50  = textwrap.TextWrapper(width=50)
@@ -575,46 +576,16 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
                 else:
                     Warn("OS not supported for e-mailing information...")
 
-# Global Instance of ErrorWarningManager
-instEWManager = None
-
-def Report(args):
-    import pickle
-    instLoadSaveFile = '.EWAS_ErrorWarningManagerInst.pkl'
-    if(os.path.isfile(instLoadSaveFile)):
-        if(int(SettingsManager().Get_Setting('use_cached_data')) > 0):
-            Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl as user wants to use cached data as indicated in .catalyzer.ini")
-            with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
-                instEWManager = pickle.load(loadObjFile)
-        else:
-            fileUpdateTime     = time.ctime(os.path.getmtime(instLoadSaveFile))
-            lstUpdTimeFrmEpoch = int(os.path.getmtime(instLoadSaveFile))
-            crrntTimeFrmEpoch  = int(time.time())
-            diffInSeconds = crrntTimeFrmEpoch - lstUpdTimeFrmEpoch
-            Debug("ErrorWarningManagerInst Save-Load File update time                        = " + str(fileUpdateTime))
-            Debug("ErrorWarningManagerInst Save-Load File update time in seconds since Epoch = " + str(lstUpdTimeFrmEpoch))
-            Debug("Current Time in seconds since Epoch                                       = " + str(crrntTimeFrmEpoch))
-            Debug("Difference in last update time and current time in seconds                = " + str(diffInSeconds))
-            delay = str(diffInSeconds) + " Seconds"
-            if(diffInSeconds >= 60 and diffInSeconds < 3600):
-                delay = str(int(diffInSeconds/60)) + " Minutes"
-            if(diffInSeconds >= 3660):
-                delay = str(int(diffInSeconds/3600)) + " Hours"
-            Info("Previous run data which was generated " + delay + " ago...")
-            choice = input("Do you want to use it? [Y/n]: ")
-            if(choice == '' or choice == 'y' or choice == 'Y' or choice == 'yes' or choice == 'Yes' or choice == 'YES'):
-                Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl")
-                with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
-                    instEWManager = pickle.load(loadObjFile)
-            else:
-                # Instantiate ErrorWarningManager
-                Debug("Creating new instance of ErrorWarningManager")
-                instEWManager = ErrorWarningManager()
+def Report(args, globalInstEWManager=None):
+    instEWManager = None
+    if(not globalInstEWManager):
+        instEWManager = Get_Error_Warning_Manager_Instance()
+    else:
+        Debug("Reusing already parsed ErrorWarningManager...")
+        instEWManager = globalInstEWManager
 
     GenStdoutReport(instEWManager, args)
-    with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
-        Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
-        pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
+    return instEWManager
 
 def List_Buckets(args):
     args.report_level = 1
@@ -770,31 +741,82 @@ def Show_Config(args):
     for myFile in SettingsManager().Get_Bucket_Config_Files_List():
         Info('\t' + myFile)
 
+def Assign_Bucket(bucketName, bucketOwner, instEWManager):
+    if(BucketsDatabaseManager().Selected_Database() == "None"):
+        return
+    if(BucketsDatabaseManager().Assign_Bucket(bucketName, bucketOwner)):
+        Error("Something went wrong while assigning bucket owner. Please check the error messaes above...")
+    Info("Successfully assigned bucket '" + bucketName + "' to user '" + bucketOwner + "'")
+
+def Report_Buckets_Status(isError, instEWManager):
+    if(BucketsDatabaseManager().Selected_Database() == "None"):
+        return
+    bucketList = None
+    iCount = None
+    headers = ["Bucket Name", "Status", "Owner"]
+    bucketData = []
+    if(isError):
+        bucketList = instEWManager.GetErrorsBucketsList()
+    else:
+        bucketList = instEWManager.GetWarningsBucketsList()
+
+    for bucket in bucketList:
+        if(isError):
+            iCount = instEWManager.GetErrorsCountForBucket(bucket)
+        else:
+            iCount = instEWManager.GetWarningsCountForBucket(bucket)
+
+        status, owner = BucketsDatabaseManager().Get_Bucket_Information(bucket) 
+        bucketData.append([bucket, status, owner])
+    Info('\n' + tabulate(bucketData, headers=headers, tablefmt='fancy_grid'))
+
+def Get_Error_Warning_Manager_Instance():
+    instEWManager = None
+    instLoadSaveFile = '.EWAS_ErrorWarningManagerInst.pkl'
+    if(os.path.isfile(instLoadSaveFile)):
+        if(int(SettingsManager().Get_Setting('use_cached_data')) > 0):
+            Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl as user wants to use cached data as indicated in .catalyzer.ini")
+            with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
+                instEWManager = pickle.load(loadObjFile)
+        else:
+            fileUpdateTime     = time.ctime(os.path.getmtime(instLoadSaveFile))
+            lstUpdTimeFrmEpoch = int(os.path.getmtime(instLoadSaveFile))
+            crrntTimeFrmEpoch  = int(time.time())
+            diffInSeconds = crrntTimeFrmEpoch - lstUpdTimeFrmEpoch
+            Debug("ErrorWarningManagerInst Save-Load File update time                        = " + str(fileUpdateTime))
+            Debug("ErrorWarningManagerInst Save-Load File update time in seconds since Epoch = " + str(lstUpdTimeFrmEpoch))
+            Debug("Current Time in seconds since Epoch                                       = " + str(crrntTimeFrmEpoch))
+            Debug("Difference in last update time and current time in seconds                = " + str(diffInSeconds))
+            delay = str(diffInSeconds) + " Seconds"
+            if(diffInSeconds >= 60 and diffInSeconds < 3600):
+                delay = str(int(diffInSeconds/60)) + " Minutes"
+            if(diffInSeconds >= 3660):
+                delay = str(int(diffInSeconds/3600)) + " Hours"
+            Info("Previous run data which was generated " + delay + " ago...")
+            choice = input("Do you want to use it? [Y/n]: ")
+            if(choice == '' or choice == 'y' or choice == 'Y' or choice == 'yes' or choice == 'Yes' or choice == 'YES'):
+                Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl")
+                with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
+                    instEWManager = pickle.load(loadObjFile)
+            else:
+                # Instantiate ErrorWarningManager
+                Debug("Creating new instance of ErrorWarningManager")
+                instEWManager = ErrorWarningManager()
+                with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
+                    Debug("New instance of ErrorWarningManager created.")
+                    Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
+                    pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
+    else:
+        # Instantiate ErrorWarningManager
+        Debug("Creating new instance of ErrorWarningManager")
+        instEWManager = ErrorWarningManager()
+        with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
+            Debug("New instance of ErrorWarningManager created.")
+            Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
+            pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
+    return instEWManager
 
 def Bucket_Management(args):
-    # class ErrorWarningApprovalSystemCmd(cmd.Cmd):
-        # '''
-        # ErrorWarningApprovalSystemCmd
-        # '''
-
-        # # Constructor
-        # #
-        # def __init__(self, tool="EWAS"):
-            # Debug("ErrorWarningApprovalSystemCmd Constructor called...")
-
-        # prompt = '[EWAS]:\> '
-        # intro = "Simple command processor example."
-        # doc_header = 'doc_header'
-        # misc_header = 'misc_header'
-        # undoc_header = 'undoc_header'
-        # ruler = '-'
-
-        # def do_show(self):
-            # print("Showing the list of buckets...")
-        # def do_EOF(self, line):
-            # "Exit"
-            # return True
-    # ErrorWarningApprovalSystemCmd().cmdloop()
     class ErrorWarningApprovalSystemCmd(cmd.Cmd):
         """Buckets Management Utility of Error Warnings Approval System"""
         """Type help to get help about various commands possible for Buckets Management"""
@@ -802,26 +824,45 @@ def Bucket_Management(args):
         prompt = colored('[EWAS]:\> ', attrs=['bold'])
         intro = "Buckets Management Utility of Error Warnings Approval System\nType help to get help about various commands possible for Buckets Management\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 
-        doc_header = 'doc_header'
+        doc_header = 'Documented functions'
         misc_header = 'misc_header'
-        undoc_header = 'undoc_header'
+        undoc_header = 'Functions without documentation'
 
         ruler = '-'
+        def __init__(self):
+            self.globalInstEWManager = None
+            super().__init__()
 
+        def do_select_database(self, line):
+            '''Select Database...'''
+            Select_Database(args)
+
+        def do_sdb(self, line):
+            '''Select Database...'''
+            Select_Database(args)
 
         def do_exit(self, line):
+            '''Exit Buckets Management Utility...'''
+            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
+            return True
+
+        def do_quit(self, line):
+            '''Exit Buckets Management Utility...'''
             Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
             return True
 
         def do_bye(self, line):
+            '''Exit Buckets Management Utility...'''
             Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
             return True
 
         def do_q(self,line):
+            '''Exit Buckets Management Utility...'''
             Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
             return True
 
         def do_x(self,line):
+            '''Exit Buckets Management Utility...'''
             Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
             return True
 
@@ -829,7 +870,8 @@ def Bucket_Management(args):
             print('\n'.join([
                 "",
                 '################################################################################',
-                '#                This command displays error information...                    #',
+                '# REPORT_ERRORS                                                          (USER)#',
+                '#      This command displays error information...                              #',
                 '################################################################################',
                 "",
                 'report_errors [level=1|2|3|4|5]',
@@ -837,6 +879,51 @@ def Bucket_Management(args):
                 'E.g.',
                 '\treport_errors 1',
                 '\treport_errors 5',
+                ]))
+
+        def help_re(self):
+            print('\n'.join([
+                "",
+                '################################################################################',
+                '# REPORT_WARNINGS                                                        (USER)#',
+                '#      This command displays error information...                              #',
+                '################################################################################',
+                "",
+                'report_errors [level=1|2|3|4|5]',
+                "",
+                'E.g.',
+                '\treport_errors 1',
+                '\treport_errors 5',
+                ]))
+
+        def help_report_warnings(self):
+            print('\n'.join([
+                "",
+                '################################################################################',
+                '# REPORT_WARNINGS                                                        (USER)#',
+                '#      This command displays warning information...                            #',
+                '################################################################################',
+                "",
+                'report_errors [level=1|2|3|4|5]',
+                "",
+                'E.g.',
+                '\treport_warnings 1',
+                '\treport_warnings 5',
+                ]))
+
+        def help_rw(self):
+            print('\n'.join([
+                "",
+                '################################################################################',
+                '# REPORT_WARNINGS                                                        (USER)#',
+                '#      This command displays warning information...                            #',
+                '################################################################################',
+                "",
+                'report_warnings [level=1|2|3|4|5]',
+                "",
+                'E.g.',
+                '\treport_warnings 1',
+                '\treport_warnings 5',
                 ]))
 
         def do_report_errors(self, level):
@@ -851,7 +938,84 @@ def Bucket_Management(args):
                 args.errors_only = True
                 args.warnings_only = False
                 args.report_level = int(level)
-                Report(args)
+                if(self.globalInstEWManager):
+                    Report(args, self.globalInstEWManager)
+                else:
+                    self.globalInstEWManager = Report(args)
+
+        def do_re(self, level):
+            self.do_report_errors(level)
+
+        def do_rw(self, level):
+            self.do_report_warnings(level)
+
+        def do_reparse(self, line):
+            '''Reparse all the log files...'''
+            self.globalInstEWManager = ErrorWarningManager()
+            with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
+                Debug("New instance of ErrorWarningManager created.")
+                Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
+                pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
+            Info("Reparsing of logs completed...")
+
+        def do_view_error_bukets_status(self, line):
+            '''View the owner and status information of error buckets'''
+            Info("Printing the status of error buckets...")
+            if(not self.globalInstEWManager):
+                self.globalInstEWManager = Get_Error_Warning_Manager_Instance()
+            Report_Buckets_Status(True, self.globalInstEWManager)
+
+        def do_view_warning_bukets_status(self, line):
+            '''View the owner and status information of warnings buckets'''
+            Info("Printing the status of warning buckets...")
+            if(not self.globalInstEWManager):
+                Warn("Logs have not been parsed. Parsing now...")
+                self.globalInstEWManager = Get_Error_Warning_Manager_Instance()
+            Report_Buckets_Status(False, self.globalInstEWManager)
+
+        def do_vebs(self, line):
+            '''View the owner and status information of error buckets'''
+            self.do_view_error_bukets_status(line)
+
+        def do_vwbs(self, line):
+            '''View the owner and status information of warnings buckets'''
+            self.do_view_warning_bukets_status(line)
+
+        def help_assign_bucket(self):
+            print('\n'.join([
+                "",
+                '################################################################################',
+                '# ASSIGN_BUCKET                                                         (ADMIN)#',
+                '#      This command assigns owners to buckets...                               #',
+                '################################################################################',
+                "",
+                'assign_bucket bucketName = bucketOwner',
+                "",
+                'E.g.',
+                '\tassign_bucket CMD-001 = amitvinx',
+                '\tassign_bucket PSYM-002 = jameel',
+                ]))
+
+        def do_assign_bucket(self, line):
+            if(not SessionManager().IsAdmin()):
+                Error("You are not an ADMINISTRATOR. You can not assign buckets...")
+                return
+            Info("Printing the status of error buckets...")
+            try:
+                bucketName, bucketOwner = line.split('=')
+            except:
+                Warn("Please provide a valid bucketName and bucketOwner to assign the bucket to...")
+                self.help_assign_bucket()
+                return
+
+            if(not bucketName or not bucketOwner):
+                Warn("Please provide a valid bucketName and bucketOwner to assign the bucket to...")
+                self.help_assign_bucket()
+                return
+            else:
+                bucketName = bucketName.strip()
+                bucketOwner = bucketOwner.strip()
+                Assign_Bucket(bucketName, bucketOwner, self.globalInstEWManager)
 
         def help_report_warnings(self):
             print('\n'.join([
@@ -875,13 +1039,13 @@ def Bucket_Management(args):
                 args.errors_only = False
                 args.warnings_only = True
                 args.report_level = int(level)
-                Report(args)
-
-        def do_quit(self, line):
-            Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
-            return True
+                if(self.globalInstEWManager):
+                    Report(args, self.globalInstEWManager)
+                else:
+                    self.globalInstEWManager = Report(args)
 
     ErrorWarningApprovalSystemCmd().cmdloop()
+
 
 if __name__ == '__main__':
     # Parse Command-line Arguments

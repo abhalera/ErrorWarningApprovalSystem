@@ -49,7 +49,6 @@ class UsersManager(metaclass=Singleton):
         Debug("UsersManager Constructor called...")
         dbName = os.environ['EWAS_ROOT'] + '/db/users.db'
         self._engine = create_engine('sqlite:///' + dbName, echo = False)
-        self._base = declarative_base()
         self._session = sessionmaker(bind = self._engine)()
 
     def Add_User(self, username=None, password=None, email=None, is_admin=0):
