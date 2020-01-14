@@ -955,7 +955,7 @@ def Bucket_Management(args):
             with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
                 Debug("New instance of ErrorWarningManager created.")
                 Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
-                pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(self.globalInstEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
             Info("Reparsing of logs completed...")
 
         def do_view_error_bukets_status(self, line):

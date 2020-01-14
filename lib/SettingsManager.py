@@ -39,7 +39,7 @@ class SettingsManager(metaclass=Singleton):
         Debug("SettingsManager Constructor called...")
         iniFile = os.environ['HOME'] + '/.catalyzer.ini'
         if(not os.path.isfile(iniFile)):
-            Warn("Could not find ~/.catalyzer.ini file. Please create one to store default settings...")
+            Critical("Could not find ~/.catalyzer.ini file. Please create one to store default settings...")
 
         import configparser
         Debug("Parsing ~/catalyzer.ini file = ")
