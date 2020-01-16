@@ -14,7 +14,8 @@ import os
 import tqdm
 #import tkinter
 import argparse
-import cmd
+import cmd2
+from cmd2 import with_argparser
 import pickle
 import textwrap
 import termcolor
@@ -211,30 +212,6 @@ def AddArguments(parser):
         nargs='?'
     )
     parser.add_argument(
-        '-cmd',
-        help    = "Run a specified command",
-        choices = [
-            'nop',
-            'list_buckets',
-            'list_files',
-            'report',
-            'clean',
-            'create_database',
-            'list_database',
-            'select_database',
-            'current_database',
-            'report_bucket',
-            'add_bucket',
-            'remove_bucket',
-            'update_bucket',
-            'add_user',
-            'remove_user',
-            'show_config',
-            'bucket_management'
-        ],
-        default = 'nop'
-    )
-    parser.add_argument(
         '-xls',
         help  = "Generate Excel report",
         nargs = '?',
@@ -247,12 +224,12 @@ def AddArguments(parser):
         nargs = '?',
         const = 'default.db',
     )
-    parser.add_argument(
-        '-csv',
-        help  = "Generate CSV report",
-        nargs = '?',
-        const = 'ewadmin.csv',
-    )
+    # parser.add_argument(
+        # '-csv',
+        # help  = "Generate CSV report",
+        # nargs = '?',
+        # const = 'ewadmin.csv',
+    # )
     parser.add_argument(
         '-b',
         '--bucket',
@@ -316,11 +293,6 @@ def AddArguments(parser):
         help   = "Report errors only",
         action = 'store_true'
     )
-    parser.add_argument(
-        '-gui',
-        help   = "GUI mode",
-        action = 'store_true'
-    )
 
 def ParseCommandline(text=None):
     parser = argparse.ArgumentParser(
@@ -330,6 +302,35 @@ def ParseCommandline(text=None):
                        "in your project...")
     )
     AddArguments(parser)
+    parser.add_argument(
+        '-gui',
+        help   = "GUI mode",
+        action = 'store_true'
+    )
+    parser.add_argument(
+        '-cmd',
+        help    = "Run a specified command",
+        choices = [
+            'nop',
+            'list_buckets',
+            'list_files',
+            'report',
+            'clean',
+            'create_database',
+            'list_database',
+            'select_database',
+            'current_database',
+            'report_bucket',
+            'add_bucket',
+            'remove_bucket',
+            'update_bucket',
+            'add_user',
+            'remove_user',
+            'show_config',
+            'shell'
+        ],
+        default = 'nop'
+    )
     args = parser.parse_args()
     return args
 
@@ -816,8 +817,8 @@ def Get_Error_Warning_Manager_Instance():
             pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
     return instEWManager
 
-def Bucket_Management(args):
-    class ErrorWarningApprovalSystemCmd(cmd.Cmd):
+def Shell(args):
+    class ErrorWarningApprovalSystemCmd(cmd2.Cmd):
         """Buckets Management Utility of Error Warnings Approval System"""
         """Type help to get help about various commands possible for Buckets Management"""
 
@@ -866,88 +867,14 @@ def Bucket_Management(args):
             Info("Thanks for using Buckets Management Utility of Error Warnings Approval System...")
             return True
 
-        def help_report_errors(self):
-            print('\n'.join([
-                "",
-                '################################################################################',
-                '# REPORT_ERRORS                                                          (USER)#',
-                '#      This command displays error information...                              #',
-                '################################################################################',
-                "",
-                'report_errors [level=1|2|3|4|5]',
-                "",
-                'E.g.',
-                '\treport_errors 1',
-                '\treport_errors 5',
-                ]))
-
-        def help_re(self):
-            print('\n'.join([
-                "",
-                '################################################################################',
-                '# REPORT_WARNINGS                                                        (USER)#',
-                '#      This command displays error information...                              #',
-                '################################################################################',
-                "",
-                'report_errors [level=1|2|3|4|5]',
-                "",
-                'E.g.',
-                '\treport_errors 1',
-                '\treport_errors 5',
-                ]))
-
-        def help_report_warnings(self):
-            print('\n'.join([
-                "",
-                '################################################################################',
-                '# REPORT_WARNINGS                                                        (USER)#',
-                '#      This command displays warning information...                            #',
-                '################################################################################',
-                "",
-                'report_errors [level=1|2|3|4|5]',
-                "",
-                'E.g.',
-                '\treport_warnings 1',
-                '\treport_warnings 5',
-                ]))
-
-        def help_rw(self):
-            print('\n'.join([
-                "",
-                '################################################################################',
-                '# REPORT_WARNINGS                                                        (USER)#',
-                '#      This command displays warning information...                            #',
-                '################################################################################',
-                "",
-                'report_warnings [level=1|2|3|4|5]',
-                "",
-                'E.g.',
-                '\treport_warnings 1',
-                '\treport_warnings 5',
-                ]))
-
-        def do_report_errors(self, level):
-            parser = argparse.ArgumentParser()
-            AddArguments(parser)
-            cmdArgs = parser.parse_args(level.split('\s+'))
-            print(cmdArgs)
-            if(not str(level).isnumeric()):
-                Error("Please provide a numeric value for level betwen 1 to 5...")
-                self.help_report_errors()
+        parser = argparse.ArgumentParser(description = " This command displays error information...")
+        AddArguments(parser)
+        @with_argparser(parser)
+        def do_report(self, cmdArgs):
+            if(self.globalInstEWManager):
+                Report(cmdArgs, self.globalInstEWManager)
             else:
-                args.errors_only = True
-                args.warnings_only = False
-                args.report_level = int(level)
-                if(self.globalInstEWManager):
-                    Report(args, self.globalInstEWManager)
-                else:
-                    self.globalInstEWManager = Report(args)
-
-        def do_re(self, level):
-            self.do_report_errors(level)
-
-        def do_rw(self, level):
-            self.do_report_warnings(level)
+                self.globalInstEWManager = Report(cmdArgs)
 
         def do_reparse(self, line):
             '''Reparse all the log files...'''
@@ -1016,33 +943,6 @@ def Bucket_Management(args):
                 bucketName = bucketName.strip()
                 bucketOwner = bucketOwner.strip()
                 Assign_Bucket(bucketName, bucketOwner, self.globalInstEWManager)
-
-        def help_report_warnings(self):
-            print('\n'.join([
-                "",
-                '################################################################################',
-                '#                This command displays warning information...                  #',
-                '################################################################################',
-                "",
-                'report_warnings [level=1|2|3|4|5]',
-                "",
-                'E.g.',
-                '\treport_warnings 1',
-                '\treport_warnings 5',
-                ]))
-
-        def do_report_warnings(self, level):
-            if(not str(level).isnumeric()):
-                Error("Please provide a numeric value for level betwen 1 to 5...")
-                self.help_report_warnings()
-            else:
-                args.errors_only = False
-                args.warnings_only = True
-                args.report_level = int(level)
-                if(self.globalInstEWManager):
-                    Report(args, self.globalInstEWManager)
-                else:
-                    self.globalInstEWManager = Report(args)
 
     ErrorWarningApprovalSystemCmd().cmdloop()
 
@@ -1116,9 +1016,9 @@ if __name__ == '__main__':
     if(args.cmd == 'show_config'):
         Debug("Executing show_config command...")
         Show_Config(args)
-    if(args.cmd == 'bucket_management'):
-        Debug("Executing bucket_management command...")
-        Bucket_Management(args)
+    if(args.cmd == 'shell'):
+        Debug("Executing shell command...")
+        Shell(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
         Info(pprint.pformat(args))
