@@ -10,6 +10,7 @@ import pprint
 import sqlalchemy
 
 from Logger import *
+from SettingsManager import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, Boolean
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -47,7 +48,10 @@ class UsersManager(metaclass=Singleton):
     # Constructor
     def __init__(self):
         Debug("UsersManager Constructor called...")
-        dbName = os.environ['EWAS_ROOT'] + '/db/users.db'
+        # dbName = os.environ['EWAS_ROOT'] + '/db/users.db'
+        dbName = SettingsManager().Get_Default_Database()
+        if(not dbName):
+            Critical("No database selected as of now. Please use select_database command to select current database")
         self._engine = create_engine('sqlite:///' + dbName, echo = False)
         self._session = sessionmaker(bind = self._engine)()
 
