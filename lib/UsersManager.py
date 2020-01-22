@@ -48,11 +48,11 @@ class UsersManager(metaclass=Singleton):
     # Constructor
     def __init__(self):
         Debug("UsersManager Constructor called...")
-        # dbName = os.environ['EWAS_ROOT'] + '/db/users.db'
-        dbName = SettingsManager().Get_Default_Database()
-        if(not dbName):
-            Critical("No database selected as of now. Please use select_database command to select current database")
-        self._engine = create_engine('sqlite:///' + dbName, echo = False)
+        # self._dbName = os.environ['EWAS_ROOT'] + '/db/users.db'
+        self._dbName = SettingsManager().Get_Users_Database()
+        if(not os.path.isfile(self._dbName)):
+            Critical("Could not find users database file " + self._dbName + " .Please specify correct path of the users database file to proceed...")
+        self._engine = create_engine('sqlite:///' + self._dbName, echo = False)
         self._session = sessionmaker(bind = self._engine)()
 
     def Add_User(self, username=None, password=None, email=None, is_admin=0):
@@ -106,7 +106,7 @@ class UsersManager(metaclass=Singleton):
 
         result = self._session.query(Users).filter(Users.username == username).first()
         if(not result):
-            Critical("No user found with username = " + username)
+            Critical("No user found with username = " + username + " in database file " + self._dbName)
             return 0
         else:
             if (password == result.password):
@@ -121,7 +121,7 @@ class UsersManager(metaclass=Singleton):
         Debug("Checking if user = " + username + " is an ADMINISTRATOR...")
         result = self._session.query(Users).filter(Users.username == username).first()
         if(not result):
-            Critical("No user found with username = " + user)
+            Critical("No user found with username = " + username + " in database file " + self._dbName)
             return False
         else:
             if(result.is_admin > 0):

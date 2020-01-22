@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python3
 '''
 Created on Nov 28, 2019
 @author: amitvinx
@@ -207,9 +207,10 @@ d8'    88                                                        88    88.    "'
 
 def AddArguments(parser):
     parser.add_argument(
-        'help',
+        '-help',
         help = "Get help for a command",
-        nargs='?'
+        nargs='?',
+        const = True,
     )
     parser.add_argument(
         '-xls',
@@ -297,9 +298,7 @@ def AddArguments(parser):
 def ParseCommandline(text=None):
     parser = argparse.ArgumentParser(
         prog = "ErrorWarningApproval.py",
-        description = ("Error and Warnings Administratrator. "
-                       "Keep the track of Errors and Warnings "
-                       "in your project...")
+        description = ("Error and Warnings Administratrator. Keep the track of Errors and Warnings in your project...")
     )
     AddArguments(parser)
     parser.add_argument(
@@ -332,7 +331,7 @@ def ParseCommandline(text=None):
         default = 'nop'
     )
     args = parser.parse_args()
-    return args
+    return args, parser
 
 # Dump CSV Report
 def GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
@@ -596,14 +595,14 @@ def List_Buckets(args):
 def List_Databases(args):
     Info("List of Databases available = ")
     i = 1
-    for database in SettingsManager().Get_Databases_List():
+    for database in SettingsManager().Get_EWAS_Databases_List():
         Info('\t' + str(i) + '. '+ database)
         i+=1
 
 def Select_Database(args):
     List_Databases(args)
     dbNumber = int(input("Enter database number to select: "))-1
-    BucketsDatabaseManager().Select_Database(SettingsManager().Get_Database(dbNumber))
+    BucketsDatabaseManager().Select_Database(SettingsManager().Get_EWAS_Database(dbNumber))
     Current_Database(args)
 
 def Current_Database(args):
@@ -709,7 +708,7 @@ def Add_User(args, usersManager):
     password = getpass.getpass("Password: ")
     email = input("Email: ")
     isAdmin = input("Is Admin? 0->No, 1->Yes: ")
-    if(usersManager.Add_User(username=username, password=hashlib.md5(str(password).encode('utf-8')).hexdigest(), email=email, is_admin=bool(isAdmin))):
+    if(usersManager.Add_User(username=username, password=hashlib.md5(str(password).encode('utf-8')).hexdigest(), email=email, is_admin=bool(int(isAdmin)))):
         Critical("Could not add the user...")
     else:
         Info("User " + username + " successfully added to the database...")
@@ -731,15 +730,15 @@ def Remove_User(args, usersManager):
 def Show_Config(args):
     session = SessionManager()
     Print("Printing current settings for EWAS...")
-    Info("Default Database = " + SettingsManager().Get_Default_Database())
-    Info("List of Databases = ")
-    for database in SettingsManager().Get_Databases_List():
+    Info("Users Database = " + SettingsManager().Get_Users_Database())
+    Info("List of Buckets Databases = ")
+    for database in SettingsManager().Get_EWAS_Databases_List():
         Info('\t' + database)
     Info("List of Search Config Files = ")
-    for myFile in SettingsManager().Get_Search_Config_Files_List():
+    for myFile in SettingsManager().Get_EWAS_Search_Config_Files_List():
         Info('\t' + myFile)
     Info("List of Bucket Config Files = ")
-    for myFile in SettingsManager().Get_Bucket_Config_Files_List():
+    for myFile in SettingsManager().Get_EWAS_Bucket_Config_Files_List():
         Info('\t' + myFile)
 
 def Assign_Bucket(bucketName, bucketOwner, instEWManager):
@@ -949,7 +948,7 @@ def Shell(args):
 
 if __name__ == '__main__':
     # Parse Command-line Arguments
-    args = ParseCommandline()
+    args, argParser = ParseCommandline()
 
     # Setup the Logger
     loggingLevel = logging.INFO
@@ -961,19 +960,19 @@ if __name__ == '__main__':
     WelcomeBanner()
     session = SessionManager()
     settingsManager = SettingsManager()
-    Parse_Config_Files(args, settingsManager.Get_Search_Config_Files_List())
-    Parse_Bucket_Config_Files(args, settingsManager.Get_Bucket_Config_Files_List())
+    Parse_Config_Files(args, settingsManager.Get_EWAS_Search_Config_Files_List())
+    Parse_Bucket_Config_Files(args, settingsManager.Get_EWAS_Bucket_Config_Files_List())
     bucketsDbManager = BucketsDatabaseManager()
     usersManager = UsersManager()
 
+    if(args.help):
+        argParser.print_help() or exit(0)
     if(args.config_files):
         Debug("Parsing directory configuration files...")
         Parse_Config_Files(args)
-
     if(args.bucket_files):
         Debug("Parsing bucket configuration files...")
         Parse_Bucket_Config_Files(args)
-
     if(args.cmd == 'report'):
         Debug("Executing report command...")
         Report(args)
@@ -1021,5 +1020,11 @@ if __name__ == '__main__':
         Shell(args)
     if(args.cmd == 'nop'):
         Info("Printing arguments...")
-        Info(pprint.pformat(args))
+        for arg in vars(args):
+            value = getattr(args,arg)
+            if(value):
+                Info(arg + " = " + str(value))
+            else:
+                Info(arg + " = None")
+        # Info(pprint.pformat(args))
 
