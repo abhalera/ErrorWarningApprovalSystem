@@ -21,6 +21,15 @@ usersTable = Table(
    Column('is_admin', Integer),
 )
 
+# Describe Buckets Table
+bucketsTable = Table(
+   'buckets', meta,
+   Column('id', Integer, primary_key = True, autoincrement = True),
+   Column('name', String),
+   Column('status', String),
+   Column('owner', String),
+)
+
 meta.create_all(engine)
 print("Database " + dbName + " successfully created and users table inserted successfully.")
 

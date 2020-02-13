@@ -143,3 +143,6 @@ dmypy.json
 *.xlsx
 *.xls
 *~lock*
+*.bak
+*.swp
+*.swo
