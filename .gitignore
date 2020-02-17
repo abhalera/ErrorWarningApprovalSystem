@@ -140,9 +140,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-*.xlsx
 *.xls
 *~lock*
 *.bak
 *.swp
 *.swo
+ewadmin.xlsx
+outline.xlsx
