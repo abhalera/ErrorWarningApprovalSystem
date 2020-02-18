@@ -36,7 +36,11 @@ class SettingsManager(metaclass=Singleton):
     def __init__(self, tool="EWAS"):
         self._defaultTool = tool
         Debug("SettingsManager Constructor called...")
-        iniFile = os.environ['HOME'] + '/.catalyzer.ini'
+        if(platform.system() == 'Windows'):
+            iniFile = os.environ['USERPROFILE'] + '/.catalyzer.ini'        
+        else:
+            iniFile = os.environ['HOME'] + '/.catalyzer.ini'
+        
         if(not os.path.isfile(iniFile)):
             Critical("Could not find .catalyzer.ini file in HOME directory. Please create one to store default settings...")
 
