@@ -21,7 +21,7 @@ import termcolor
 from tabulate import tabulate
 os.environ['EWAS_ROOT'] = os.path.abspath(os.path.join(__file__ ,"../.."))
 sys.path.append(os.environ['EWAS_ROOT'] + '/lib')
-sys.path.append(os.environ['EWAS_ROOT'] + '/wxdesigner')
+sys.path.append(os.environ['EWAS_ROOT'] + '/wxformbuilder')
 
 from Logger import *
 from LogParser import *
@@ -298,6 +298,155 @@ def AddArguments(parser):
 # Dump CSV Report
 def GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
     pass
+
+# Get Error Wraning Data for a run
+def GetErrorWarningData(instEWManager, args):
+    eHeaders = ["Error Bucket", "Num"]
+    wHeaders = ["Warning Bucket", "Num"]
+    eData    = []
+    wData    = []
+    if(not args.warnings_only):
+        if(int(args.report_level) > 1):
+            eHeaders.append("Error Messages")
+        if(int(args.report_level) > 2):
+            eHeaders.append("Log File")
+            eHeaders.append("FC")
+        if(int(args.report_level) > 3):
+            eHeaders.append("Short Description")
+        if(int(args.report_level) > 4):
+            eHeaders.append("Full Description")
+
+        for bucket in instEWManager.GetErrorsBucketsList():
+            iCount = instEWManager.GetErrorsCountForBucket(bucket)
+            if(args.bucket and bucket not in args.bucket):
+                continue
+            if(args.bucket_regex and not bool(re.search(args.bucket_regex, bucket))):
+                continue
+            if(int(args.report_level) > 2):
+                for error in instEWManager.GetErrorsListForBucket(bucket):
+                    errorLogCount = instEWManager.GetErrorsFileCountDictForBucketText(bucket, error)
+                    for key in errorLogCount.keys():
+                        if(args.xls):
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    eData.append([bucket, iCount, error,  key, errorLogCount[key], SynopsysErrorsWarningsDict[bucket]['short'], SynopsysErrorsWarningsDict[bucket]['full']])
+                                else:
+                                    eData.append([bucket, iCount, error,  key, errorLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        eData.append([bucket, iCount, error,  key, errorLogCount[key], SynopsysErrorsWarningsDict[bucket]['short']])
+                                    else:
+                                        eData.append([bucket, iCount, error,  key, errorLogCount[key], "NA"])
+                                else:
+                                    eData.append([bucket, iCount, error,  key, errorLogCount[key]])
+                        else:
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    eData.append([bucket, iCount, wrapper50.fill(error),  wrapper30.fill(key), errorLogCount[key], wrapper30.fill(SynopsysErrorsWarningsDict[bucket]['short']), wrapper40.fill(SynopsysErrorsWarningsDict[bucket]['full'])])
+                                else:
+                                    eData.append([bucket, iCount, wrapper50.fill(error),  wrapper30.fill(key), errorLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        eData.append([bucket, iCount, wrapper40.fill(error),  wrapper50.fill(key), errorLogCount[key], wrapper50.fill(SynopsysErrorsWarningsDict[bucket]['short'])])
+                                    else:
+                                        eData.append([bucket, iCount, wrapper40.fill(error),  wrapper50.fill(key), errorLogCount[key], "NA"])
+                                else:
+                                    eData.append([bucket, iCount, wrapper50.fill(error),  wrapper80.fill(key), errorLogCount[key]])
+            else:
+                if(int(args.report_level) > 1):
+                    for error in instEWManager.GetErrorsListForBucket(bucket):
+                        if(args.xls):
+                            eData.append([bucket, iCount, error])
+                        else:
+                            eData.append([bucket, iCount, wrapper80.fill(error)])
+                else:
+                    eData.append([bucket, iCount])
+
+        if not args.xls:
+            # TODO: setenv LESSCHARSET 'utf-8'
+            # TODO: setenv LESS R
+            from pydoc import pager
+            print(colored('\nError information listed below...\n', 'yellow', attrs=['bold']) + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
+            Log('\nError information listed below...\n' + tabulate(eData, headers=eHeaders, tablefmt='fancy_grid'))
+
+        Debug("Printing eData...")
+        Debug(pprint.pformat(eData, indent=4))
+
+    if(not args.errors_only):
+        if(int(args.report_level) > 1):
+            wHeaders.append("Warning Messages")
+        if(int(args.report_level) > 2):
+            wHeaders.append("Log File")
+            wHeaders.append("FC")
+        if(int(args.report_level) > 3):
+            wHeaders.append("Short Description")
+        if(int(args.report_level) > 4):
+            wHeaders.append("Full Description")
+
+        for bucket in instEWManager.GetWarningsBucketsList():
+            iCount = instEWManager.GetWarningsCountForBucket(bucket)
+            if(args.bucket and bucket not in args.bucket):
+                continue
+            if(args.bucket_regex and not bool(re.search(args.bucket_regex, bucket))):
+                continue
+            if(int(args.report_level) > 2):
+                for warning in instEWManager.GetWarningsListForBucket(bucket):
+                    warningLogCount = instEWManager.GetWarningsFileCountDictForBucketText(bucket, warning)
+                    for key in warningLogCount.keys():
+                        if(args.xls):
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    wData.append([bucket, iCount, warning,  key, warningLogCount[key], SynopsysErrorsWarningsDict[bucket]['short'], SynopsysErrorsWarningsDict[bucket]['full']])
+                                else:
+                                    wData.append([bucket, iCount, warning,  key, warningLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        wData.append([bucket, iCount, warning,  key, warningLogCount[key], SynopsysErrorsWarningsDict[bucket]['short']])
+                                    else:
+                                        wData.append([bucket, iCount, warning,  key, warningLogCount[key], "NA"])
+                                else:
+                                    wData.append([bucket, iCount, warning,  key, warningLogCount[key]])
+                        else:
+                            if(int(args.report_level) > 4):
+                                if(bucket in SynopsysErrorsWarningsDict):
+                                    wData.append([bucket, iCount, wrapper50.fill(warning),  wrapper30.fill(key), warningLogCount[key], wrapper30.fill(SynopsysErrorsWarningsDict[bucket]['short']), wrapper40.fill(SynopsysErrorsWarningsDict[bucket]['full'])])
+                                else:
+                                    wData.append([bucket, iCount, wrapper50.fill(warning),  wrapper30.fill(key), warningLogCount[key], "NA", "NA"])
+                            else:
+                                if(int(args.report_level) > 3):
+                                    if(bucket in SynopsysErrorsWarningsDict):
+                                        wData.append([bucket, iCount, wrapper40.fill(warning),  wrapper50.fill(key), warningLogCount[key], wrapper50.fill(SynopsysErrorsWarningsDict[bucket]['short'])])
+                                    else:
+                                        wData.append([bucket, iCount, wrapper40.fill(warning),  wrapper50.fill(key), warningLogCount[key], "NA"])
+                                else:
+                                    wData.append([bucket, iCount, wrapper50.fill(warning),  wrapper80.fill(key), warningLogCount[key]])
+                        # if(args.xls):
+                            # wData.append([bucket, iCount, warning, key, warningLogCount[key]])
+                        # else:
+                            # wData.append([bucket, iCount, wrapper50.fill(warning), wrapper80.fill(key), warningLogCount[key]])
+            else:
+                if(int(args.report_level) > 1):
+                    for warning in instEWManager.GetWarningsListForBucket(bucket):
+                        if(args.xls):
+                            wData.append([bucket, iCount, warning])
+                        else:
+                            wData.append([bucket, iCount, wrapper80.fill(warning)])
+                else:
+                    wData.append([bucket, instEWManager.GetWarningsCountForBucket(bucket)])
+        if not args.xls:
+            # TODO: setenv LESSCHARSET 'utf-8'
+            # TODO: setenv LESS R
+            from pydoc import pager
+            print(colored('\nWarning information listed below...\n', 'yellow', attrs=['bold']) + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
+            Log('\nWarning information listed below...\n' + tabulate(wData, headers=wHeaders, tablefmt="fancy_grid"))
+        Debug("Printing wData...")
+        Debug(pprint.pformat(wData, indent=4))
+
+    GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders)
+    GenCSVReport(instEWManager, args, eData, wData, eHeaders, wHeaders)
 
 # Print Report on STDOUT
 def GenStdoutReport(instEWManager, args):
@@ -724,7 +873,7 @@ def Report_Buckets_Status(isError, instEWManager):
         else:
             iCount = instEWManager.GetWarningsCountForBucket(bucket)
 
-        status, owner = BucketsDatabaseManager().Get_Bucket_Information(bucket) 
+        status, owner = BucketsDatabaseManager().Get_Bucket_Information(bucket)
         bucketData.append([bucket, status, owner])
     Info('\n' + tabulate(bucketData, headers=headers, tablefmt='fancy_grid'))
 
@@ -904,15 +1053,59 @@ def Shell(args):
     ErrorWarningApprovalSystemCmd().cmdloop()
 
 import GUI
+import wx.dataview
+import random
+
+class TabRunDataPanel(wx.Panel):
+    def __init__(self, parent):
+        super(TabRunDataPanel, self).__init__(parent)
+        self.bSizerPanel= wx.BoxSizer( wx.HORIZONTAL )
+        self.listctrl = wx.dataview.DataViewListCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.DV_HORIZ_RULES|wx.dataview.DV_ROW_LINES|wx.dataview.DV_VERT_RULES)
+
+        self.listctrl.AppendToggleColumn("Toggle")
+        self.listctrl.AppendTextColumn("Bucket")
+        self.listctrl.AppendTextColumn("No")
+
+        self.bSizerPanel.Add(self.listctrl, 1, wx.EXPAND |wx.ALL, 5 )
+        self.SetSizer(self.bSizerPanel)
+        self.Layout()
+
+    def AddDataRow(self, data):
+        self.listctrl.AppendItem(data)
+
 
 class Application(GUI.frameMain):
-    def __init__(self,parent):
+    def __init__(self,parent, session, settingsManager, bucketsDbManager, usersManager):
         GUI.frameMain.__init__(self,parent)
-        self.SetIcon(wx.Icon(os.environ['EWAS_ROOT'] + "/wxdesigner/icon.svg"))
+        self.SetIcon(wx.Icon(os.environ['EWAS_ROOT'] + "/wxformbuilder/icon.png"))
+        self.session = session
+        self.settingsManager = settingsManager
+        self.bucketsDbManager = bucketsDbManager
+        self.usersManager = usersManager
+        self.tabs = []
+        self.noTabs = 0
+
+    def QuitApplication(self, event):
+        exit(0)
+
+    def NewRun(self, event):
+        tabH = TabRunDataPanel(self.m_notebookMain)
+        self.noTabs += 1
+        self.m_notebookMain.AddPage(tabH, "Run " + str(self.noTabs))
+        self.tabs.append(tabH)
+
+    def Run(self, event):
+        self.m_statusBarMain.SetStatusText("Parsing the log file...")
+        self.instEWManager = ErrorWarningManager()
+        self.m_statusBarMain.SetStatusText("Done!")
+        for i in range(100):
+            data = [True, "row " + str(i), str(random.randint(1, 100))]
+            self.tabs[self.m_notebookMain.GetSelection()].AddDataRow(data)
+
 
 if __name__ == '__main__':
     # Setup the Logger
-    SetupLogger(fileName="Approval.log", loggingLevel=logging.INFO)
+    SetupLogger(fileName="EWAS.log", loggingLevel=logging.DEBUG)
     session = SessionManager()
     settingsManager = SettingsManager()
     Parse_Config_Files(settingsManager.Get_EWAS_Search_Config_Files_List())
@@ -922,7 +1115,7 @@ if __name__ == '__main__':
 
     # Create application
     mainApplication = wx.App(False)
-    frame = Application(None)
+    frame = Application(None, session, settingsManager, bucketsDbManager, usersManager)
     frame.Show(True)
     mainApplication.MainLoop()
 

@@ -1,0 +1,7 @@
+echo 'import os' > /tmp/GUI_modified.py
+sed -i 's/u"iconfinder/os.environ["EWAS_ROOT"] + "\/wxformbuilder\/" + u"iconfinder/' GUI.py
+sed -i 's/AddLabelTool/AddTool/' GUI.py
+sed -i 's/AppendItem/Append/' GUI.py
+sed -i 's/SetSizeHintsSz/SetSizeHints/' GUI.py
+cat GUI.py >> /tmp/GUI_modified.py
+mv /tmp/GUI_modified.py GUI.py
