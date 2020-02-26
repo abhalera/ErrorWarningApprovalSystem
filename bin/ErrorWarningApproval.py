@@ -213,6 +213,20 @@ def AddArguments(parser):
         const = True,
     )
     parser.add_argument(
+        '-ucd',
+        '--use_cached_data',
+        help = "Use previously generated Error/Warning data if available",
+        nargs='?',
+        const = True,
+    )
+    parser.add_argument(
+        '-force',
+        '--force_reparse',
+        help = "Forcefully reparse all the log files again",
+        nargs='?',
+        const = True,
+    )
+    parser.add_argument(
         '-xls',
         help  = "Generate Excel report",
         nargs = '?',
@@ -579,7 +593,7 @@ def GenXLSReport(instEWManager, args, eData, wData, eHeaders, wHeaders):
 def Report(args, globalInstEWManager=None):
     instEWManager = None
     if(not globalInstEWManager):
-        instEWManager = Get_Error_Warning_Manager_Instance()
+        instEWManager = Get_Error_Warning_Manager_Instance(args)
     else:
         Debug("Reusing already parsed ErrorWarningManager...")
         instEWManager = globalInstEWManager
@@ -770,35 +784,24 @@ def Report_Buckets_Status(isError, instEWManager):
         bucketData.append([bucket, status, owner])
     Info('\n' + tabulate(bucketData, headers=headers, tablefmt='fancy_grid'))
 
-def Get_Error_Warning_Manager_Instance():
+def Get_Error_Warning_Manager_Instance(args=None):
+    useCachedData = (int(SettingsManager().Get_Setting('use_cached_data')) > 0)
+    forceReparse  = (int(SettingsManager().Get_Setting('force_reparse')) > 0)
+    if(args):
+        if(args.use_cached_data):
+            useCachedData = useCachedData or args.use_cached_data
+        if(args.force_reparse):
+            forceReparse  = forceReparse or args.force_reparse
     instEWManager = None
     instLoadSaveFile = '.EWAS_ErrorWarningManagerInst.pkl'
     if(os.path.isfile(instLoadSaveFile)):
-        if(int(SettingsManager().Get_Setting('use_cached_data')) > 0):
-            Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl as user wants to use cached data as indicated in .catalyzer.ini")
+        if( useCachedData and not forceReparse):
+            Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl as user wants to use previously generated data...")
             with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
                 instEWManager = pickle.load(loadObjFile)
         else:
-            fileUpdateTime     = time.ctime(os.path.getmtime(instLoadSaveFile))
-            lstUpdTimeFrmEpoch = int(os.path.getmtime(instLoadSaveFile))
-            crrntTimeFrmEpoch  = int(time.time())
-            diffInSeconds = crrntTimeFrmEpoch - lstUpdTimeFrmEpoch
-            Debug("ErrorWarningManagerInst Save-Load File update time                        = " + str(fileUpdateTime))
-            Debug("ErrorWarningManagerInst Save-Load File update time in seconds since Epoch = " + str(lstUpdTimeFrmEpoch))
-            Debug("Current Time in seconds since Epoch                                       = " + str(crrntTimeFrmEpoch))
-            Debug("Difference in last update time and current time in seconds                = " + str(diffInSeconds))
-            delay = str(diffInSeconds) + " Seconds"
-            if(diffInSeconds >= 60 and diffInSeconds < 3600):
-                delay = str(int(diffInSeconds/60)) + " Minutes"
-            if(diffInSeconds >= 3660):
-                delay = str(int(diffInSeconds/3600)) + " Hours"
-            Info("Previous run data which was generated " + delay + " ago...")
-            choice = input("Do you want to use it? [Y/n]: ")
-            if(choice == '' or choice == 'y' or choice == 'Y' or choice == 'yes' or choice == 'Yes' or choice == 'YES'):
-                Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl")
-                with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
-                    instEWManager = pickle.load(loadObjFile)
-            else:
+            if(forceReparse):
+                Warn("Forcefully parsing all the log files again as user wants to forcefully reparse all the log files again...")
                 # Instantiate ErrorWarningManager
                 Debug("Creating new instance of ErrorWarningManager")
                 instEWManager = ErrorWarningManager()
@@ -806,6 +809,34 @@ def Get_Error_Warning_Manager_Instance():
                     Debug("New instance of ErrorWarningManager created.")
                     Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
                     pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
+            else:
+                fileUpdateTime     = time.ctime(os.path.getmtime(instLoadSaveFile))
+                lstUpdTimeFrmEpoch = int(os.path.getmtime(instLoadSaveFile))
+                crrntTimeFrmEpoch  = int(time.time())
+                diffInSeconds = crrntTimeFrmEpoch - lstUpdTimeFrmEpoch
+                Debug("ErrorWarningManagerInst Save-Load File update time                        = " + str(fileUpdateTime))
+                Debug("ErrorWarningManagerInst Save-Load File update time in seconds since Epoch = " + str(lstUpdTimeFrmEpoch))
+                Debug("Current Time in seconds since Epoch                                       = " + str(crrntTimeFrmEpoch))
+                Debug("Difference in last update time and current time in seconds                = " + str(diffInSeconds))
+                delay = str(diffInSeconds) + " Seconds"
+                if(diffInSeconds >= 60 and diffInSeconds < 3600):
+                    delay = str(int(diffInSeconds/60)) + " Minutes"
+                if(diffInSeconds >= 3660):
+                    delay = str(int(diffInSeconds/3600)) + " Hours"
+                Info("Previous run data which was generated " + delay + " ago...")
+                choice = input("Do you want to use it? [Y/n]: ")
+                if(choice == '' or choice == 'y' or choice == 'Y' or choice == 'yes' or choice == 'Yes' or choice == 'YES'):
+                    Warn("Loading ErrorWarningManagerInst from .EWAS_ErrorWarningManagerInst.pkl")
+                    with open('.EWAS_ErrorWarningManagerInst.pkl', 'rb') as loadObjFile:
+                        instEWManager = pickle.load(loadObjFile)
+                else:
+                    # Instantiate ErrorWarningManager
+                    Debug("Creating new instance of ErrorWarningManager")
+                    instEWManager = ErrorWarningManager()
+                    with open('.EWAS_ErrorWarningManagerInst.pkl', 'wb') as saveObjFile:
+                        Debug("New instance of ErrorWarningManager created.")
+                        Debug("Saving ErrorWarningManagerInst to .EWAS_ErrorWarningManagerInst.pkl")
+                        pickle.dump(instEWManager, saveObjFile, pickle.HIGHEST_PROTOCOL)
     else:
         # Instantiate ErrorWarningManager
         Debug("Creating new instance of ErrorWarningManager")
